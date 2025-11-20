@@ -111,7 +111,6 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale }) => {
                             {sale.game_name?.charAt(0).toUpperCase()}
                           </div>
                         )}
-                        <span className="text-sm font-semibold capitalize text-gray-800">{sale.game_name}</span>
                         {isPending && (
                           <span className="text-[10px] font-semibold tracking-wide uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
                             Solicitud pendiente

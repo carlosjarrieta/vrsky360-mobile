@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { fetchSales, requestCancelSale } from '../services/api';
 import { Sale, User } from '../types';
-import SalesChart from './SalesChart';
 import SalesTable from './SalesTable';
 import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw } from 'lucide-react';
 
@@ -210,11 +209,6 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
             </div>
           </div>
         </div>
-
-
-
-        {/* Chart */}
-        <SalesChart sales={activeSales} />
 
         {/* Table */}
         <SalesTable sales={sales} onCancelSale={handleSaleCancel} />
