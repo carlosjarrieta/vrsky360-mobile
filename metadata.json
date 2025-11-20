@@ -1,0 +1,5 @@
+{
+  "name": "vrSky360 Mobile",
+  "description": "A mobile-first sales dashboard with authentication and date filtering, connected to a Rails API.",
+  "requestFramePermissions": []
+}
