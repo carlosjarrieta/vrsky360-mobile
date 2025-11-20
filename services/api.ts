@@ -147,7 +147,23 @@ export const requestCancelSale = async (
     }
 
     const payload = await response.json();
-    const canceled = Boolean(payload.canceled ?? payload.success ?? true);
+    
+    // The backend returns { success: true, message: "...", data: { id, sale_id, reason, created_at } }
+    // This means the cancellation REQUEST was created, not that the sale is canceled
+    // So we should return canceled: false and set cancellation_status to 'pending'
+    
+    if (payload.success) {
+      return { 
+        canceled: false, 
+        sale: { 
+          cancellation_status: 'pending',
+          cancellation_reason: reason
+        } 
+      };
+    }
+    
+    // Fallback for other response formats
+    const canceled = Boolean(payload.canceled ?? false);
     return { canceled, sale: payload.sale };
   } catch (error) {
     console.error('Cancel request failed', error);

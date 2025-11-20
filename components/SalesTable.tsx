@@ -72,7 +72,7 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale }) => {
           </thead>
           <tbody>
             {sales.length > 0 ? (
-              sales.slice().reverse().map((sale) => {
+              sales.map((sale) => {
                 const imageUrl = resolveGameImageUrl(sale.game_image_url);
                 const isPending = sale.pending ?? sale.pendingCancellation;
                 const rowStateClass = sale.canceled

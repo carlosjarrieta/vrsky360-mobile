@@ -48,17 +48,31 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
     try {
       const data = await fetchSales(token, startDate, endDate);
       const pendingIds = new Set(pendingIdsRef.current);
+      
+      // Update pending IDs based on server response - trust the backend
       data.forEach((sale) => {
-        if (pendingIds.has(sale.id)) {
-          if (sale.canceled || sale.cancellation_status === 'rejected') {
-            pendingIds.delete(sale.id);
-          }
+        const isServerPending = sale.pending === true || sale.cancellation_status === 'pending';
+        
+        if (isServerPending) {
+          // Server says it's pending, add to local tracking
+          pendingIds.add(sale.id);
+        } else if (pendingIds.has(sale.id)) {
+          // Server says it's NOT pending anymore (approved, rejected, or just false), remove from local tracking
+          pendingIds.delete(sale.id);
         }
       });
-      const enriched = data.map((sale) => ({
-        ...sale,
-        pendingCancellation: pendingIds.has(sale.id) || sale.cancellation_status === 'pending',
-      }));
+      
+      const enriched = data.map((sale) => {
+        const isPending = sale.pending === true || sale.cancellation_status === 'pending';
+        return {
+          ...sale,
+          pendingCancellation: isPending,
+          pending: isPending,
+          // Don't override canceled if it's truly canceled
+          canceled: sale.canceled ?? false,
+        };
+      });
+      
       setPendingCancellationIds(Array.from(pendingIds));
       setSales(enriched);
     } catch (error) {
@@ -69,30 +83,82 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
   }, [token, startDate, endDate]);
 
   const handleSaleCancel = useCallback(async (saleId: number, reason: string) => {
-    const result = await requestCancelSale(token, saleId, reason);
-    const computedPending = !result.canceled && result.sale?.cancellation_status !== 'rejected';
+    // Step 1: Optimistic update - immediately set to pending
     setSales((prev) =>
       prev.map((sale) =>
         sale.id === saleId
           ? {
               ...sale,
-              ...result.sale,
-              canceled: result.canceled ?? sale.canceled,
-              pendingCancellation: computedPending,
+              pendingCancellation: true,
+              pending: true,
+              canceled: false,
             }
           : sale
       )
     );
-    setPendingCancellationIds((prev) => {
-      const next = new Set(prev);
-      if (computedPending) {
-        next.add(saleId);
+    setPendingCancellationIds((prev) => Array.from(new Set([...prev, saleId])));
+
+    try {
+      // Step 2: Make the API request
+      const result = await requestCancelSale(token, saleId, reason);
+      
+      // Step 3: Interpret the server response correctly
+      const serverStatus = result.sale?.cancellation_status;
+      const isCanceled = result.canceled ?? false;
+      
+      let finalPending = false;
+      let finalCanceled = false;
+      
+      if (serverStatus === 'pending') {
+        // Cancellation request is pending approval
+        finalPending = true;
+        finalCanceled = false;
+      } else if (serverStatus === 'approved' || (isCanceled && serverStatus !== 'rejected')) {
+        // Cancellation was approved/completed
+        finalPending = false;
+        finalCanceled = true;
+      } else if (serverStatus === 'rejected') {
+        // Cancellation was rejected - restore to active
+        finalPending = false;
+        finalCanceled = false;
       } else {
-        next.delete(saleId);
+        // Default: assume pending if no clear status but request succeeded
+        finalPending = true;
+        finalCanceled = false;
       }
-      return Array.from(next);
-    });
-  }, [token]);
+      
+      // Step 4: Update state with server response
+      setSales((prev) =>
+        prev.map((sale) =>
+          sale.id === saleId
+            ? {
+                ...sale,
+                ...result.sale,
+                pendingCancellation: finalPending,
+                pending: finalPending,
+                canceled: finalCanceled,
+              }
+            : sale
+        )
+      );
+      
+      setPendingCancellationIds((prev) => {
+        const next = new Set(prev);
+        if (finalPending) {
+          next.add(saleId);
+        } else {
+          next.delete(saleId);
+        }
+        return Array.from(next);
+      });
+      
+    } catch (error) {
+      console.error('Failed to cancel sale:', error);
+      // Revert optimistic update on error
+      loadData();
+      throw error;
+    }
+  }, [token, loadData]);
 
   useEffect(() => {
     loadData();
