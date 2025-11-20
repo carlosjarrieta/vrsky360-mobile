@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { fetchSales, requestCancelSale } from '../services/api';
 import { Sale, User } from '../types';
 import SalesChart from './SalesChart';
@@ -11,6 +11,8 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
+const PENDING_STORAGE_KEY = 'pendingSaleCancellations';
+
 const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
   const today = new Date().toISOString().split('T')[0];
   
@@ -18,12 +20,48 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
   const [endDate, setEndDate] = useState(today);
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(false);
+  const [pendingCancellationIds, setPendingCancellationIds] = useState<number[]>(() => {
+    if (typeof window === 'undefined') {
+      return [];
+    }
+    try {
+      const stored = window.localStorage.getItem(PENDING_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      return [];
+    }
+  });
+  const pendingIdsRef = useRef<Set<number>>(new Set(pendingCancellationIds));
+
+  useEffect(() => {
+    pendingIdsRef.current = new Set(pendingCancellationIds);
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(pendingCancellationIds));
+      } catch (error) {
+        console.error('Failed to persist pending cancellations', error);
+      }
+    }
+  }, [pendingCancellationIds]);
 
   const loadData = React.useCallback(async () => {
     setLoading(true);
     try {
       const data = await fetchSales(token, startDate, endDate);
-      setSales(data);
+      const pendingIds = new Set(pendingIdsRef.current);
+      data.forEach((sale) => {
+        if (pendingIds.has(sale.id)) {
+          if (sale.canceled || sale.cancellation_status === 'rejected') {
+            pendingIds.delete(sale.id);
+          }
+        }
+      });
+      const enriched = data.map((sale) => ({
+        ...sale,
+        pendingCancellation: pendingIds.has(sale.id) || sale.cancellation_status === 'pending',
+      }));
+      setPendingCancellationIds(Array.from(pendingIds));
+      setSales(enriched);
     } catch (error) {
       console.error("Failed to fetch sales", error);
     } finally {
@@ -33,18 +71,29 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
 
   const handleSaleCancel = useCallback(async (saleId: number, reason: string) => {
     const result = await requestCancelSale(token, saleId, reason);
+    const computedPending = !result.canceled && result.sale?.cancellation_status !== 'rejected';
     setSales((prev) =>
       prev.map((sale) =>
         sale.id === saleId
           ? {
               ...sale,
               ...result.sale,
-              canceled: result.canceled ?? true,
+              canceled: result.canceled ?? sale.canceled,
+              pendingCancellation: computedPending,
             }
           : sale
       )
     );
-  }, []);
+    setPendingCancellationIds((prev) => {
+      const next = new Set(prev);
+      if (computedPending) {
+        next.add(saleId);
+      } else {
+        next.delete(saleId);
+      }
+      return Array.from(next);
+    });
+  }, [token]);
 
   useEffect(() => {
     loadData();
@@ -163,6 +212,9 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
         </div>
 
 
+
+        {/* Chart */}
+        <SalesChart sales={activeSales} />
 
         {/* Table */}
         <SalesTable sales={sales} onCancelSale={handleSaleCancel} />

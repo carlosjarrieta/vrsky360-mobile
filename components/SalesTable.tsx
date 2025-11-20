@@ -72,59 +72,81 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale }) => {
           </thead>
           <tbody>
             {sales.length > 0 ? (
-              sales.slice().reverse().map((sale) => (
-                <tr
-                  key={sale.id}
-                  className={`border-b border-gray-50 transition-colors ${sale.canceled ? 'bg-red-50 text-gray-500 hover:bg-red-50' : 'hover:bg-gray-50'}`}
-                >
-                  <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900">
-                    <div className="flex flex-col">
-                      <span>{new Date(sale.created_at).toISOString().split('T')[0]}</span>
-                      <span className="text-xs text-gray-400">{new Date(sale.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-gray-600">
-                    <div className="flex flex-col items-start gap-2">
-                      {resolveGameImageUrl(sale.game_image_url) ? (
-                        <img
-                          src={resolveGameImageUrl(sale.game_image_url)!}
-                          alt={`${sale.game_name} cover`}
-                          className="w-16 h-16 rounded-xl object-cover shadow-sm border border-gray-100"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-xl bg-gray-100 border border-dashed border-gray-200 flex items-center justify-center text-xs text-gray-400">
-                          {sale.game_name?.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-center">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                      <Users className="w-3 h-3" />
-                      {sale.player_count}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-right font-bold text-gray-800">
-                    ${sale.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-right">
-                    <button
-                      type="button"
-                      onClick={() => openModal(sale)}
-                      disabled={sale.canceled}
-                      className={`text-xs font-semibold px-3 py-2 rounded-full border transition ${sale.canceled
-                        ? 'border-red-200 bg-red-100 text-red-600 pointer-events-none'
-                        : 'border-primary bg-white text-primary hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
-                      }`}
-                    >
-                      {sale.canceled ? 'Venta cancelada' : 'Solicitar cancelación'}
-                    </button>
-                  </td>
-                </tr>
-              ))
+              sales.slice().reverse().map((sale) => {
+                const imageUrl = resolveGameImageUrl(sale.game_image_url);
+                const isPending = sale.pending ?? sale.pendingCancellation;
+                const rowStateClass = sale.canceled
+                  ? 'bg-red-50 text-gray-500 hover:bg-red-50'
+                  : isPending
+                    ? 'bg-amber-50 text-amber-900 hover:bg-amber-50'
+                    : 'hover:bg-gray-50';
+                const actionDisabled = sale.canceled || isPending;
+                const actionLabel = sale.canceled
+                  ? 'Venta cancelada'
+                  : isPending
+                    ? 'Solicitud pendiente'
+                    : 'Solicitar cancelación';
+
+                return (
+                  <tr
+                    key={sale.id}
+                    className={`border-b border-gray-50 transition-colors ${rowStateClass}`}
+                  >
+                    <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900">
+                      <div className="flex flex-col">
+                        <span>{new Date(sale.created_at).toISOString().split('T')[0]}</span>
+                        <span className="text-xs text-gray-400">{new Date(sale.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                      <div className="flex flex-col items-start gap-2">
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={`${sale.game_name} cover`}
+                            className="w-16 h-16 rounded-xl object-cover shadow-sm border border-gray-100"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded-xl bg-gray-100 border border-dashed border-gray-200 flex items-center justify-center text-xs text-gray-400">
+                            {sale.game_name?.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span className="text-sm font-semibold capitalize text-gray-800">{sale.game_name}</span>
+                        {isPending && (
+                          <span className="text-[10px] font-semibold tracking-wide uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                            Solicitud pendiente
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-center">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                        <Users className="w-3 h-3" />
+                        {sale.player_count}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-right font-bold text-gray-800">
+                      ${sale.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <button
+                        type="button"
+                        onClick={() => openModal(sale)}
+                        disabled={actionDisabled}
+                        className={`text-xs font-semibold px-3 py-2 rounded-full border transition ${actionDisabled
+                          ? 'border-gray-200 bg-gray-100 text-gray-500 pointer-events-none'
+                          : 'border-primary bg-white text-primary hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+                        }`}
+                      >
+                        {actionLabel}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <ArrowDownCircle className="w-8 h-8 text-gray-300" />
                     No sales found for this period.

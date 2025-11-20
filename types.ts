@@ -34,6 +34,9 @@ export interface Sale {
   game_image_url?: string;
   canceled?: boolean;
   cancellation_reason?: string;
+  cancellation_status?: 'pending' | 'approved' | 'rejected';
+  pendingCancellation?: boolean;
+  pending?: boolean;
 }
 
 export interface SalesApiResponse {
