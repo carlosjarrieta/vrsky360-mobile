@@ -7,6 +7,14 @@ const LOGIN_URL = `${apiBase}/login`;
 const SALES_URL = `${apiBase}/sales`;
 const CANCEL_URL = `${apiBase}/request_cancel`;
 
+// Custom Auth error used to indicate the token is invalid/expired
+export class AuthError extends Error {
+  constructor(message?: string) {
+    super(message ?? 'Authentication error');
+    this.name = 'AuthError';
+  }
+}
+
 // Mock data generator for demonstration when API is unreachable
 const generateMockSales = (startDate: string, endDate: string): Sale[] => {
   const start = new Date(startDate);
@@ -114,6 +122,11 @@ export const fetchSales = async (token: string, startDate: string, endDate: stri
       }
     });
 
+    if (response.status === 401) {
+      // Token expired or unauthorized
+      throw new AuthError('Token expired or unauthorized');
+    }
+
     if (!response.ok) {
       throw new Error('Failed to fetch sales');
     }
@@ -121,6 +134,11 @@ export const fetchSales = async (token: string, startDate: string, endDate: stri
     const jsonResponse: SalesApiResponse = await response.json();
     return jsonResponse.data || []; // Handle { data: [...] } structure
   } catch (error) {
+    // If the error is related to authorization, rethrow so caller can redirect to login
+    if (error instanceof AuthError) {
+      throw error;
+    }
+
     console.warn("API unavailable or failed, returning mock sales data.");
     await new Promise(resolve => setTimeout(resolve, 500));
     return generateMockSales(startDate, endDate);
@@ -141,6 +159,10 @@ export const requestCancelSale = async (
       },
       body: JSON.stringify({ sale_id: saleId, reason }),
     });
+
+    if (response.status === 401) {
+      throw new AuthError('Token expired or unauthorized');
+    }
 
     if (!response.ok) {
       throw new Error('No se pudo cancelar la venta');

@@ -101,11 +101,13 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale }) => {
                     <td className="px-4 py-3 whitespace-nowrap text-gray-600">
                       <div className="flex flex-col items-start gap-2">
                         {imageUrl ? (
-                          <img
-                            src={imageUrl}
-                            alt={`${sale.game_name} cover`}
-                            className="w-16 h-16 rounded-xl object-cover shadow-sm border border-gray-100"
-                          />
+                          <div className="w-16 h-16 rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                            <img
+                              src={imageUrl}
+                              alt={`${sale.game_name} cover`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
                         ) : (
                           <div className="w-16 h-16 rounded-xl bg-gray-100 border border-dashed border-gray-200 flex items-center justify-center text-xs text-gray-400">
                             {sale.game_name?.charAt(0).toUpperCase()}
@@ -125,7 +127,7 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale }) => {
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right font-bold text-gray-800">
-                      ${sale.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      ${sale.amount.toLocaleString('en-US', { minimumFractionDigits: 0 })}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right">
                       <button
