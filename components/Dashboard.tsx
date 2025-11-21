@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { fetchSales, requestCancelSale } from '../services/api';
+import { fetchSales, requestCancelSale, AuthError } from '../services/api';
 import { Sale, User } from '../types';
 import SalesTable from './SalesTable';
 import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw } from 'lucide-react';
@@ -76,6 +76,11 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
       setPendingCancellationIds(Array.from(pendingIds));
       setSales(enriched);
     } catch (error) {
+      // If token is invalid or expired, redirect to login via onLogout
+      if (error instanceof AuthError) {
+        onLogout();
+        return;
+      }
       console.error("Failed to fetch sales", error);
     } finally {
       setLoading(false);
@@ -153,6 +158,11 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
       });
       
     } catch (error) {
+      // If token is invalid or expired, redirect to login via onLogout
+      if (error instanceof AuthError) {
+        onLogout();
+        return;
+      }
       console.error('Failed to cancel sale:', error);
       // Revert optimistic update on error
       loadData();
