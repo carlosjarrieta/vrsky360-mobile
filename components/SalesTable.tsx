@@ -66,6 +66,7 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale }) => {
               <th className="px-4 py-3">Date / Time</th>
               <th className="px-4 py-3">Game</th>
               <th className="px-4 py-3 text-center">Players</th>
+              <th className="px-4 py-3 text-center">Method</th>
               <th className="px-4 py-3 text-right">Amount</th>
               <th className="px-4 py-3 text-right">Action</th>
             </tr>
@@ -126,6 +127,17 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale }) => {
                         {sale.player_count}
                       </span>
                     </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-center">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
+                          sale.payment_method === 'transfer'
+                            ? 'bg-purple-100 text-purple-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}
+                      >
+                        {sale.payment_method || 'cash'}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right font-bold text-gray-800">
                       ${sale.amount.toLocaleString('en-US', { minimumFractionDigits: 0 })}
                     </td>
@@ -147,7 +159,7 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale }) => {
               })
             ) : (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <ArrowDownCircle className="w-8 h-8 text-gray-300" />
                     No sales found for this period.
