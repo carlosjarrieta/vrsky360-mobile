@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { fetchSales, requestCancelSale, AuthError } from '../services/api';
+import { fetchSales, requestCancelSale, changePaymentMethod, AuthError } from '../services/api';
 import { Sale, User } from '../types';
 import SalesTable from './SalesTable';
 import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw } from 'lucide-react';
@@ -170,6 +170,31 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
     }
   }, [token, loadData]);
 
+  const handleChangePaymentMethod = useCallback(async (saleId: number, method: number) => {
+    try {
+      const result = await changePaymentMethod(token, saleId, method);
+      if (result.success) {
+        // Optimistic update first
+        setSales((prev) =>
+          prev.map((sale) =>
+            sale.id === saleId
+              ? { ...sale, ...(result.sale || {}), payment_method: method }
+              : sale
+          )
+        );
+        // Then refresh data to ensure consistency
+        loadData();
+      }
+    } catch (error) {
+      if (error instanceof AuthError) {
+        onLogout();
+        return;
+      }
+      console.error('Failed to change payment method:', error);
+      alert('No se pudo cambiar el método de pago. Por favor intente nuevamente.');
+    }
+  }, [token, onLogout, loadData]);
+
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -287,7 +312,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
         </div>
 
         {/* Table */}
-        <SalesTable sales={sales} onCancelSale={handleSaleCancel} />
+        <SalesTable sales={sales} onCancelSale={handleSaleCancel} onChangePaymentMethod={handleChangePaymentMethod} />
 
       </main>
     </div>

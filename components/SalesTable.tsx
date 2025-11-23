@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Sale } from '../types';
-import { ArrowDownCircle, Users } from 'lucide-react';
+import { ArrowDownCircle, Users, MoreHorizontal, Banknote, CreditCard, Package, PlayCircle, Check } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 
 const resolveGameImageUrl = (imageUrl?: string) => {
@@ -13,10 +13,42 @@ const resolveGameImageUrl = (imageUrl?: string) => {
 interface SalesTableProps {
   sales: Sale[];
   onCancelSale: (saleId: number, reason: string) => Promise<void>;
+  onChangePaymentMethod: (saleId: number, method: number) => Promise<void>;
 }
 
-const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale }) => {
+const PAYMENT_METHODS = [
+  { label: 'Efectivo', value: 0, icon: Banknote, id: 'cash' },
+  { label: 'Transferencia', value: 1, icon: CreditCard, id: 'transfer' },
+  { label: 'Paquete', value: 2, icon: Package, id: 'package' },
+  { label: 'Demo', value: 3, icon: PlayCircle, id: 'demo' },
+];
+
+const PAYMENT_METHOD_LABELS: Record<string | number, string> = {
+  cash: 'Efectivo',
+  0: 'Efectivo',
+  transfer: 'Transferencia',
+  1: 'Transferencia',
+  package: 'Paquete',
+  2: 'Paquete',
+  demo: 'Demo',
+  3: 'Demo',
+};
+
+const PAYMENT_METHOD_COLORS: Record<string | number, string> = {
+  cash: 'bg-emerald-100 text-emerald-800',
+  0: 'bg-emerald-100 text-emerald-800',
+  transfer: 'bg-purple-100 text-purple-800',
+  1: 'bg-purple-100 text-purple-800',
+  package: 'bg-blue-100 text-blue-800',
+  2: 'bg-blue-100 text-blue-800',
+  demo: 'bg-gray-100 text-gray-800',
+  3: 'bg-gray-100 text-gray-800',
+};
+
+const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePaymentMethod }) => {
   const [activeSale, setActiveSale] = useState<Sale | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
@@ -96,7 +128,7 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale }) => {
                     <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900">
                       <div className="flex flex-col">
                         <span>{new Date(sale.created_at).toISOString().split('T')[0]}</span>
-                        <span className="text-xs text-gray-400">{new Date(sale.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        <span className="text-xs text-gray-400">{new Date(sale.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-600">
@@ -129,30 +161,104 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale }) => {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-center">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
-                          sale.payment_method === 'transfer'
-                            ? 'bg-purple-100 text-purple-800'
-                            : 'bg-emerald-100 text-emerald-800'
-                        }`}
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${PAYMENT_METHOD_COLORS[sale.payment_method || 'cash'] || PAYMENT_METHOD_COLORS['cash']
+                          }`}
                       >
-                        {sale.payment_method || 'cash'}
+                        {PAYMENT_METHOD_LABELS[sale.payment_method || 'cash'] || sale.payment_method}
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right font-bold text-gray-800">
                       ${sale.amount.toLocaleString('en-US', { minimumFractionDigits: 0 })}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right">
-                      <button
-                        type="button"
-                        onClick={() => openModal(sale)}
-                        disabled={actionDisabled}
-                        className={`text-xs font-semibold px-3 py-2 rounded-full border transition ${actionDisabled
-                          ? 'border-gray-200 bg-gray-100 text-gray-500 pointer-events-none'
-                          : 'border-primary bg-white text-primary hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
-                        }`}
-                      >
-                        {actionLabel}
-                      </button>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            if (openMenuId === sale.id) {
+                              setOpenMenuId(null);
+                              setMenuPosition(null);
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const menuHeight = 220; // Approximate height
+                              const spaceBelow = window.innerHeight - rect.bottom;
+                              const showAbove = spaceBelow < menuHeight;
+
+                              setMenuPosition({
+                                top: showAbove ? rect.top - menuHeight : rect.bottom + 4,
+                                left: rect.right - 224, // 224px = w-56
+                              });
+                              setOpenMenuId(sale.id);
+                            }
+                          }}
+                          className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
+                        >
+                          <MoreHorizontal className="w-5 h-5" />
+                        </button>
+
+                        {openMenuId === sale.id && menuPosition && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-40 cursor-default"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                setMenuPosition(null);
+                              }}
+                            />
+                            <div
+                              className="fixed w-56 bg-white rounded-xl shadow-lg border border-gray-100 z-50 py-2 overflow-hidden"
+                              style={{ top: menuPosition.top, left: menuPosition.left }}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  openModal(sale);
+                                  setOpenMenuId(null);
+                                  setMenuPosition(null);
+                                }}
+                                disabled={actionDisabled}
+                                className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-2 ${actionDisabled
+                                  ? 'text-gray-400 cursor-not-allowed bg-gray-50'
+                                  : 'text-red-600 hover:bg-red-50'
+                                  }`}
+                              >
+                                {actionLabel}
+                              </button>
+
+                              <div className="h-px bg-gray-100 my-1" />
+
+                              <div className="px-4 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                Método de pago
+                              </div>
+
+                              {PAYMENT_METHODS.map((method) => {
+                                const isSelected = sale.payment_method === method.value || sale.payment_method === method.id;
+                                const Icon = method.icon;
+                                return (
+                                  <button
+                                    key={method.value}
+                                    onClick={() => {
+                                      onChangePaymentMethod(sale.id, method.value);
+                                      setOpenMenuId(null);
+                                      setMenuPosition(null);
+                                    }}
+                                    className={`w-full text-left px-4 py-2 text-sm transition-colors flex items-center justify-between ${isSelected
+                                      ? 'bg-primary/5 text-primary font-medium'
+                                      : 'text-gray-700 hover:bg-gray-50 hover:text-primary'
+                                      }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <Icon className="w-4 h-4 opacity-70" />
+                                      {method.label}
+                                    </div>
+                                    {isSelected && <Check className="w-4 h-4" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

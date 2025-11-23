@@ -6,6 +6,7 @@ export const API_BASE_URL = apiBase;
 const LOGIN_URL = `${apiBase}/login`;
 const SALES_URL = `${apiBase}/sales`;
 const CANCEL_URL = `${apiBase}/request_cancel`;
+const PAYMENT_METHODS_URL = `${apiBase}/change_payment_method`;
 
 // Custom Auth error used to indicate the token is invalid/expired
 export class AuthError extends Error {
@@ -189,6 +190,37 @@ export const requestCancelSale = async (
     return { canceled, sale: payload.sale };
   } catch (error) {
     console.error('Cancel request failed', error);
+    throw error;
+  }
+};
+
+export const changePaymentMethod = async (
+  token: string,
+  saleId: number,
+  paymentMethod: number
+): Promise<{ success: boolean; sale?: Partial<Sale> }> => {
+  try {
+    const response = await fetch(PAYMENT_METHODS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ sale_id: saleId, payment_method: paymentMethod }),
+    });
+
+    if (response.status === 401) {
+      throw new AuthError('Token expired or unauthorized');
+    }
+
+    if (!response.ok) {
+      throw new Error('No se pudo cambiar el método de pago');
+    }
+
+    const payload = await response.json();
+    return { success: true, sale: payload.sale };
+  } catch (error) {
+    console.error('Change payment method failed', error);
     throw error;
   }
 };

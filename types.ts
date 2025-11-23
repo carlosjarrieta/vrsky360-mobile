@@ -37,7 +37,7 @@ export interface Sale {
   cancellation_status?: 'pending' | 'approved' | 'rejected';
   pendingCancellation?: boolean;
   pending?: boolean;
-  payment_method?: string;
+  payment_method?: string | number;
 }
 
 export interface SalesApiResponse {
