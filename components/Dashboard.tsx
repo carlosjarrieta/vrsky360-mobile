@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { fetchSales, requestCancelSale, AuthError } from '../services/api';
+import { fetchSales, requestCancelSale, changePaymentMethod, AuthError } from '../services/api';
 import { Sale, User } from '../types';
 import SalesTable from './SalesTable';
-import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw } from 'lucide-react';
+import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw, Banknote, CreditCard, Package, PlayCircle } from 'lucide-react';
 
 interface DashboardProps {
   token: string;
@@ -14,7 +14,7 @@ const PENDING_STORAGE_KEY = 'pendingSaleCancellations';
 
 const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
   const today = new Date().toISOString().split('T')[0];
-  
+
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
   const [sales, setSales] = useState<Sale[]>([]);
@@ -48,11 +48,11 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
     try {
       const data = await fetchSales(token, startDate, endDate);
       const pendingIds = new Set(pendingIdsRef.current);
-      
+
       // Update pending IDs based on server response - trust the backend
       data.forEach((sale) => {
         const isServerPending = sale.pending === true || sale.cancellation_status === 'pending';
-        
+
         if (isServerPending) {
           // Server says it's pending, add to local tracking
           pendingIds.add(sale.id);
@@ -61,7 +61,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
           pendingIds.delete(sale.id);
         }
       });
-      
+
       const enriched = data.map((sale) => {
         const isPending = sale.pending === true || sale.cancellation_status === 'pending';
         return {
@@ -72,7 +72,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
           canceled: sale.canceled ?? false,
         };
       });
-      
+
       setPendingCancellationIds(Array.from(pendingIds));
       setSales(enriched);
     } catch (error) {
@@ -93,11 +93,11 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
       prev.map((sale) =>
         sale.id === saleId
           ? {
-              ...sale,
-              pendingCancellation: true,
-              pending: true,
-              canceled: false,
-            }
+            ...sale,
+            pendingCancellation: true,
+            pending: true,
+            canceled: false,
+          }
           : sale
       )
     );
@@ -106,14 +106,14 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
     try {
       // Step 2: Make the API request
       const result = await requestCancelSale(token, saleId, reason);
-      
+
       // Step 3: Interpret the server response correctly
       const serverStatus = result.sale?.cancellation_status;
       const isCanceled = result.canceled ?? false;
-      
+
       let finalPending = false;
       let finalCanceled = false;
-      
+
       if (serverStatus === 'pending') {
         // Cancellation request is pending approval
         finalPending = true;
@@ -131,22 +131,22 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
         finalPending = true;
         finalCanceled = false;
       }
-      
+
       // Step 4: Update state with server response
       setSales((prev) =>
         prev.map((sale) =>
           sale.id === saleId
             ? {
-                ...sale,
-                ...result.sale,
-                pendingCancellation: finalPending,
-                pending: finalPending,
-                canceled: finalCanceled,
-              }
+              ...sale,
+              ...result.sale,
+              pendingCancellation: finalPending,
+              pending: finalPending,
+              canceled: finalCanceled,
+            }
             : sale
         )
       );
-      
+
       setPendingCancellationIds((prev) => {
         const next = new Set(prev);
         if (finalPending) {
@@ -156,7 +156,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
         }
         return Array.from(next);
       });
-      
+
     } catch (error) {
       // If token is invalid or expired, redirect to login via onLogout
       if (error instanceof AuthError) {
@@ -170,6 +170,31 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
     }
   }, [token, loadData]);
 
+  const handleChangePaymentMethod = useCallback(async (saleId: number, method: number) => {
+    try {
+      const result = await changePaymentMethod(token, saleId, method);
+      if (result.success) {
+        // Optimistic update first
+        setSales((prev) =>
+          prev.map((sale) =>
+            sale.id === saleId
+              ? { ...sale, ...(result.sale || {}), payment_method: method }
+              : sale
+          )
+        );
+        // Then refresh data to ensure consistency
+        loadData();
+      }
+    } catch (error) {
+      if (error instanceof AuthError) {
+        onLogout();
+        return;
+      }
+      console.error('Failed to change payment method:', error);
+      alert('No se pudo cambiar el método de pago. Por favor intente nuevamente.');
+    }
+  }, [token, onLogout, loadData]);
+
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -180,8 +205,22 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
     const totalRevenue = activeSales.reduce((sum, sale) => sum + sale.amount, 0);
     const totalPlayers = activeSales.reduce((sum, sale) => sum + sale.player_count, 0);
     const totalGames = activeSales.length;
-    
-    return { totalRevenue, totalGames, totalPlayers };
+
+    // Calculate totals by payment method
+    const byMethod = activeSales.reduce((acc, sale) => {
+      const method = sale.payment_method;
+      // Normalize method to string key
+      let key = 'cash';
+      if (method === 1 || method === 'transfer') key = 'transfer';
+      else if (method === 2 || method === 'package') key = 'package';
+      else if (method === 3 || method === 'demo') key = 'demo';
+      else key = 'cash'; // 0 or 'cash' or undefined
+
+      acc[key] = (acc[key] || 0) + sale.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return { totalRevenue, totalGames, totalPlayers, byMethod };
   }, [activeSales]);
 
   return (
@@ -199,7 +238,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
             <span className="hidden md:inline text-sm font-medium text-blue-100">
               {user.name}
             </span>
-            <button 
+            <button
               onClick={onLogout}
               className="bg-white/10 hover:bg-white/20 p-2 rounded-lg transition-colors"
               aria-label="Logout"
@@ -212,7 +251,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
 
       {/* Main Content */}
       <main className="flex-grow container mx-auto px-4 py-6 space-y-6">
-        
+
         {/* Filters Section */}
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
           <div className="flex flex-col md:flex-row md:items-end gap-4">
@@ -220,8 +259,8 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Start Date</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input 
-                  type="date" 
+                <input
+                  type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   className="w-full pl-10 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
@@ -232,15 +271,15 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">End Date</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input 
-                  type="date" 
+                <input
+                  type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-full pl-10 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
                 />
               </div>
             </div>
-            <button 
+            <button
               onClick={loadData}
               disabled={loading}
               className="flex items-center justify-center gap-2 bg-primary hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-all disabled:opacity-70 shadow-sm active:transform active:scale-95"
@@ -274,7 +313,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
             </div>
           </div>
 
-           <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 relative overflow-hidden group">
+          <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 relative overflow-hidden group">
             <div className="absolute right-0 top-0 h-full w-1 bg-warning"></div>
             <div className="bg-yellow-50 p-3 rounded-full text-warning group-hover:scale-110 transition-transform">
               <Users className="w-6 h-6" />
@@ -286,8 +325,51 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
           </div>
         </div>
 
+        {/* Payment Method Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3">
+            <div className="bg-emerald-50 p-2 rounded-lg text-emerald-600">
+              <Banknote className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium uppercase">Efectivo</p>
+              <p className="text-lg font-bold text-gray-800">${(stats.byMethod['cash'] || 0).toLocaleString('en-US')}</p>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3">
+            <div className="bg-purple-50 p-2 rounded-lg text-purple-600">
+              <CreditCard className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium uppercase">Transferencia</p>
+              <p className="text-lg font-bold text-gray-800">${(stats.byMethod['transfer'] || 0).toLocaleString('en-US')}</p>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3">
+            <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
+              <Package className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium uppercase">Paquete</p>
+              <p className="text-lg font-bold text-gray-800">${(stats.byMethod['package'] || 0).toLocaleString('en-US')}</p>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3">
+            <div className="bg-gray-50 p-2 rounded-lg text-gray-600">
+              <PlayCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium uppercase">Demo</p>
+              <p className="text-lg font-bold text-gray-800">${(stats.byMethod['demo'] || 0).toLocaleString('en-US')}</p>
+            </div>
+          </div>
+        </div>
+
         {/* Table */}
-        <SalesTable sales={sales} onCancelSale={handleSaleCancel} />
+        <SalesTable sales={sales} onCancelSale={handleSaleCancel} onChangePaymentMethod={handleChangePaymentMethod} />
 
       </main>
     </div>
