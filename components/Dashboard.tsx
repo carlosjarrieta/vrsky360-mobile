@@ -10,37 +10,24 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-const PENDING_STORAGE_KEY = 'pendingSaleCancellations';
-
 const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = (() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  })();
 
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(false);
-  const [pendingCancellationIds, setPendingCancellationIds] = useState<number[]>(() => {
-    if (typeof window === 'undefined') {
-      return [];
-    }
-    try {
-      const stored = window.localStorage.getItem(PENDING_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch (error) {
-      return [];
-    }
-  });
+  const [pendingCancellationIds, setPendingCancellationIds] = useState<number[]>([]);
   const pendingIdsRef = useRef<Set<number>>(new Set(pendingCancellationIds));
 
   useEffect(() => {
     pendingIdsRef.current = new Set(pendingCancellationIds);
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(pendingCancellationIds));
-      } catch (error) {
-        console.error('Failed to persist pending cancellations', error);
-      }
-    }
   }, [pendingCancellationIds]);
 
   const loadData = React.useCallback(async () => {

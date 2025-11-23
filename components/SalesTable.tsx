@@ -127,7 +127,7 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
                   >
                     <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900">
                       <div className="flex flex-col">
-                        <span>{new Date(sale.created_at).toISOString().split('T')[0]}</span>
+                        <span>{new Date(sale.created_at).toLocaleDateString('sv-SE')}</span>
                         <span className="text-xs text-gray-400">{new Date(sale.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                     </td>
