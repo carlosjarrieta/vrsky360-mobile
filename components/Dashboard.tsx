@@ -189,7 +189,13 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
   const activeSales = useMemo(() => sales.filter((sale) => !sale.canceled), [sales]);
 
   const stats = useMemo(() => {
-    const totalRevenue = activeSales.reduce((sum, sale) => sum + sale.amount, 0);
+    // Filter out demo sales for revenue calculation
+    const revenueGeneratingSales = activeSales.filter((sale) => {
+      const method = sale.payment_method;
+      return !(method === 3 || method === 'demo');
+    });
+
+    const totalRevenue = revenueGeneratingSales.reduce((sum, sale) => sum + sale.amount, 0);
     const totalPlayers = activeSales.reduce((sum, sale) => sum + sale.player_count, 0);
     const totalGames = activeSales.length;
 
