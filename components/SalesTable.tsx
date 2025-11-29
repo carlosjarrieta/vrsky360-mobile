@@ -13,7 +13,7 @@ const resolveGameImageUrl = (imageUrl?: string) => {
 interface SalesTableProps {
   sales: Sale[];
   onCancelSale: (saleId: number, reason: string) => Promise<void>;
-  onChangePaymentMethod: (saleId: number, method: number) => Promise<void>;
+  onChangePaymentMethod: (saleId: number, method: number, vendorName?: string) => Promise<void>;
 }
 
 const PAYMENT_METHODS = [
@@ -24,23 +24,16 @@ const PAYMENT_METHODS = [
 ];
 
 const PAYMENT_METHOD_LABELS: Record<string | number, string> = {
-  cash: 'Efectivo',
-  0: 'Efectivo',
-  transfer: 'Transferencia',
-  1: 'Transferencia',
-  package: 'Paquete',
-  2: 'Paquete',
-  demo: 'Demo',
-  3: 'Demo',
+  cash: 'Efectivo', 0: 'Efectivo',
+  transfer: 'Transferencia', 1: 'Transferencia',
+  package: 'Paquete', 2: 'Paquete',
+  demo: 'Demo', 3: 'Demo',
 };
 
 const PAYMENT_METHOD_COLORS: Record<string | number, string> = {
-  cash: 'bg-emerald-100 text-emerald-800',
-  0: 'bg-emerald-100 text-emerald-800',
-  transfer: 'bg-purple-100 text-purple-800',
-  1: 'bg-purple-100 text-purple-800',
-  package: 'bg-blue-100 text-blue-800',
-  2: 'bg-blue-100 text-blue-800',
+  cash: 'bg-emerald-100 text-emerald-800', 0: 'bg-emerald-100 text-emerald-800',
+  transfer: 'bg-purple-100 text-purple-800', 1: 'bg-purple-100 text-purple-800',
+  package: 'bg-blue-100 text-blue-800', 2: 'bg-blue-100 text-blue-800',
   demo: 'bg-gray-100 text-gray-800',
   3: 'bg-gray-100 text-gray-800',
 };
@@ -52,6 +45,12 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
+
+  // Vendor Modal State
+  const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
+  const [vendorName, setVendorName] = useState('');
+  const [selectedSaleForVendor, setSelectedSaleForVendor] = useState<Sale | null>(null);
+  const [vendorError, setVendorError] = useState('');
 
   const openModal = (sale: Sale) => {
     setActiveSale(sale);
@@ -129,6 +128,7 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
                       <div className="flex flex-col">
                         <span>{new Date(sale.created_at).toLocaleDateString('sv-SE')}</span>
                         <span className="text-xs text-gray-400">{new Date(sale.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="text-xs text-gray-400">ID: {sale.id}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-600">
@@ -160,12 +160,13 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-center">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${PAYMENT_METHOD_COLORS[sale.payment_method || 'cash'] || PAYMENT_METHOD_COLORS['cash']
-                          }`}
-                      >
-                        {PAYMENT_METHOD_LABELS[sale.payment_method || 'cash'] || sale.payment_method}
-                      </span>
+                      <div className="flex flex-col items-center gap-1">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${PAYMENT_METHOD_COLORS[sale.payment_method || 'cash'] || PAYMENT_METHOD_COLORS['cash']}`}>
+                          {PAYMENT_METHOD_LABELS[sale.payment_method || 'cash'] || sale.payment_method}
+                        </span>
+                        <span className="text-xs text-gray-400">ID: {sale.id}</span>
+                      </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right font-bold text-gray-800">
                       ${sale.amount.toLocaleString('en-US', { minimumFractionDigits: 0 })}
@@ -238,9 +239,20 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
                                   <button
                                     key={method.value}
                                     onClick={() => {
-                                      onChangePaymentMethod(sale.id, method.value);
-                                      setOpenMenuId(null);
-                                      setMenuPosition(null);
+                                      if (method.id === 'package') {
+                                        // Open vendor modal for package
+                                        setSelectedSaleForVendor(sale);
+                                        setVendorName(sale.vendor_name || '');
+                                        setVendorError('');
+                                        setIsVendorModalOpen(true);
+                                        setOpenMenuId(null);
+                                        setMenuPosition(null);
+                                      } else {
+                                        // Standard update for other methods
+                                        onChangePaymentMethod(sale.id, method.value);
+                                        setOpenMenuId(null);
+                                        setMenuPosition(null);
+                                      }
                                     }}
                                     className={`w-full text-left px-4 py-2 text-sm transition-colors flex items-center justify-between ${isSelected
                                       ? 'bg-primary/5 text-primary font-medium'
@@ -322,6 +334,83 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
                   className={`px-4 py-2 text-sm font-semibold rounded-xl text-white transition ${isSubmitting ? 'bg-primary/70 cursor-wait' : 'bg-primary hover:bg-blue-700'}`}
                 >
                   {isSubmitting ? 'Cancelando...' : 'Confirmar cancelación'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vendor Name Modal */}
+      {isVendorModalOpen && selectedSaleForVendor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-200">
+            <div className="p-6 space-y-4">
+              <div className="flex flex-col items-center gap-3 text-center">
+                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Asignar Paquete</p>
+                <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mb-2">
+                  <Package className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">Nombre del Vendedor</h3>
+                <p className="text-sm text-gray-500">
+                  Para cambiar el método de pago a "Paquete", es necesario ingresar el nombre del asesor que realizó la venta.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700">Nombre del Asesor</label>
+                <input
+                  type="text"
+                  value={vendorName}
+                  onChange={(e) => setVendorName(e.target.value)}
+                  className="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                  placeholder="Ej. Juan Pérez"
+                  autoFocus
+                />
+                {vendorError && <p className="mt-2 text-xs text-red-600">{vendorError}</p>}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsVendorModalOpen(false);
+                    setSelectedSaleForVendor(null);
+                    setVendorName('');
+                    setVendorError('');
+                  }}
+                  className="px-4 py-2 text-sm font-semibold text-gray-600 rounded-xl border border-gray-200 hover:bg-gray-100 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!vendorName.trim()) {
+                      setVendorError('El nombre del vendedor es obligatorio.');
+                      return;
+                    }
+
+                    if (selectedSaleForVendor) {
+                      setIsSubmitting(true);
+                      try {
+                        // 2 is the value for 'package'
+                        await onChangePaymentMethod(selectedSaleForVendor.id, 2, vendorName.trim());
+                        setIsVendorModalOpen(false);
+                        setSelectedSaleForVendor(null);
+                        setVendorName('');
+                      } catch (error) {
+                        setVendorError('No se pudo actualizar el método de pago.');
+                      } finally {
+                        setIsSubmitting(false);
+                      }
+                    }
+                  }}
+                  disabled={isSubmitting}
+                  className={`px-4 py-2 text-sm font-semibold rounded-xl text-white transition-colors ${isSubmitting ? 'bg-primary/70 cursor-wait' : 'bg-primary hover:bg-blue-700'
+                    }`}
+                >
+                  {isSubmitting ? 'Guardando...' : 'Guardar y Cambiar'}
                 </button>
               </div>
             </div>

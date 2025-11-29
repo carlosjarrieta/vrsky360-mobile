@@ -157,9 +157,9 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
     }
   }, [token, loadData]);
 
-  const handleChangePaymentMethod = useCallback(async (saleId: number, method: number) => {
+  const handleChangePaymentMethod = useCallback(async (saleId: number, method: number, vendorName?: string) => {
     try {
-      const result = await changePaymentMethod(token, saleId, method);
+      const result = await changePaymentMethod(token, saleId, method, vendorName);
       if (result.success) {
         // Optimistic update first
         setSales((prev) =>

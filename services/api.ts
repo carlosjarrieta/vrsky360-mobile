@@ -197,7 +197,8 @@ export const requestCancelSale = async (
 export const changePaymentMethod = async (
   token: string,
   saleId: number,
-  paymentMethod: number
+  paymentMethod: number,
+  vendorName?: string
 ): Promise<{ success: boolean; sale?: Partial<Sale> }> => {
   try {
     const response = await fetch(PAYMENT_METHODS_URL, {
@@ -206,7 +207,7 @@ export const changePaymentMethod = async (
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ sale_id: saleId, payment_method: paymentMethod }),
+      body: JSON.stringify({ sale_id: saleId, payment_method: paymentMethod, vendor_name: vendorName }),
     });
 
     if (response.status === 401) {
