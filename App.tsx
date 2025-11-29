@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import LoginForm from './components/LoginForm';
 import Dashboard from './components/Dashboard';
+import AdminDashboard from './components/AdminDashboard';
 import { AuthResponse, User } from './types';
 
 function App() {
@@ -12,7 +13,7 @@ function App() {
   useEffect(() => {
     const storedToken = localStorage.getItem('sales_token');
     const storedUser = localStorage.getItem('sales_user');
-    
+
     if (storedToken && storedUser) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
@@ -45,12 +46,17 @@ function App() {
   return (
     <>
       {token && user ? (
-        <Dashboard token={token} user={user} onLogout={handleLogout} />
+        user.admin ? (
+          <AdminDashboard token={token} user={user} onLogout={handleLogout} />
+        ) : (
+          <Dashboard token={token} user={user} onLogout={handleLogout} />
+        )
       ) : (
         <LoginForm onLoginSuccess={handleLoginSuccess} />
       )}
     </>
   );
 }
+
 
 export default App;

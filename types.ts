@@ -2,6 +2,7 @@ export interface User {
   id: number;
   email: string;
   name: string;
+  admin?: boolean;
 }
 
 export interface AuthResponse {
@@ -38,6 +39,8 @@ export interface Sale {
   pendingCancellation?: boolean;
   pending?: boolean;
   payment_method?: string | number;
+  machine_id?: number;
+  machine_name?: string;
 }
 
 export interface SalesApiResponse {

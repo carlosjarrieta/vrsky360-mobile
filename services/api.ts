@@ -67,6 +67,7 @@ const normalizeAuthPayload = (payload: unknown): AuthResponse => {
         id: Number(rawUser.id),
         email: (rawUser.email as string) ?? 'user@example.com',
         name: (rawUser.name as string) ?? (rawUser.email as string) ?? 'Usuario',
+        admin: Boolean(rawUser.admin),
       }
     : undefined;
 
