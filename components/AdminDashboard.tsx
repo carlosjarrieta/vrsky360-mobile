@@ -46,6 +46,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
         loadData();
     }, [loadData]);
 
+    // Auto-refresh every 1 minute
+    useEffect(() => {
+        const interval = setInterval(() => {
+            loadData();
+        }, 60000); // 60 seconds
+
+        return () => clearInterval(interval);
+    }, [loadData]);
+
     // Filter sales by selected machine if applicable
     const filteredSales = useMemo(() => {
         if (!selectedMachine) return sales;

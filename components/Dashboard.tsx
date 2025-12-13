@@ -186,6 +186,15 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
     loadData();
   }, [loadData]);
 
+  // Auto-refresh every 1 minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadData();
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(interval);
+  }, [loadData]);
+
   const activeSales = useMemo(() => sales.filter((sale) => !sale.canceled), [sales]);
 
   const stats = useMemo(() => {
