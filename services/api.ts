@@ -7,6 +7,7 @@ const LOGIN_URL = `${apiBase}/login`;
 const SALES_URL = `${apiBase}/sales`;
 const CANCEL_URL = `${apiBase}/request_cancel`;
 const PAYMENT_METHODS_URL = `${apiBase}/change_payment_method`;
+const SPLIT_SALE_URL = `${apiBase}/sales/split`;
 
 // Custom Auth error used to indicate the token is invalid/expired
 export class AuthError extends Error {
@@ -223,6 +224,45 @@ export const changePaymentMethod = async (
     return { success: true, sale: payload.sale };
   } catch (error) {
     console.error('Change payment method failed', error);
+    throw error;
+  }
+};
+
+export const splitSale = async (
+  token: string,
+  saleId: number,
+  amount: number,
+  paymentMethod: number,
+  vendorName?: string
+): Promise<{ success: boolean; data: any }> => {
+  try {
+    const response = await fetch(SPLIT_SALE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        sale_id: saleId,
+        amount,
+        payment_method: paymentMethod,
+        vendor_name: vendorName
+      }),
+    });
+
+    if (response.status === 401) {
+      throw new AuthError('Token expired or unauthorized');
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'No se pudo dividir la venta');
+    }
+
+    const payload = await response.json();
+    return { success: true, data: payload.data };
+  } catch (error) {
+    console.error('Split sale failed:', error);
     throw error;
   }
 };

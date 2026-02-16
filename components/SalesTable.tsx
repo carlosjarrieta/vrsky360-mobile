@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Sale } from '../types';
-import { ArrowDownCircle, Users, MoreHorizontal, Banknote, CreditCard, Package, PlayCircle, Check } from 'lucide-react';
+import { ArrowDownCircle, Users, MoreHorizontal, Banknote, CreditCard, Package, PlayCircle, Check, Split } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 
 const resolveGameImageUrl = (imageUrl?: string) => {
@@ -14,6 +14,7 @@ interface SalesTableProps {
   sales: Sale[];
   onCancelSale: (saleId: number, reason: string) => Promise<void>;
   onChangePaymentMethod: (saleId: number, method: number, vendorName?: string) => Promise<void>;
+  onSplitSale: (sale: Sale) => void;
 }
 
 const PAYMENT_METHODS = [
@@ -38,7 +39,7 @@ const PAYMENT_METHOD_COLORS: Record<string | number, string> = {
   3: 'bg-gray-100 text-gray-800',
 };
 
-const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePaymentMethod }) => {
+const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePaymentMethod, onSplitSale }) => {
   const [activeSale, setActiveSale] = useState<Sale | null>(null);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
@@ -224,6 +225,23 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
                                   }`}
                               >
                                 {actionLabel}
+                              </button>
+                              
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onSplitSale(sale);
+                                  setOpenMenuId(null);
+                                  setMenuPosition(null);
+                                }}
+                                disabled={actionDisabled || sale.player_count < 2}
+                                className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors flex items-center gap-2 ${actionDisabled || sale.player_count < 2
+                                  ? 'text-gray-400 cursor-not-allowed bg-gray-50'
+                                  : 'text-emerald-600 hover:bg-emerald-50'
+                                  }`}
+                              >
+                                <Split className="w-4 h-4" />
+                                Dividir pago
                               </button>
 
                               <div className="h-px bg-gray-100 my-1" />

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { fetchSales, requestCancelSale, changePaymentMethod, AuthError } from '../services/api';
+import { fetchSales, requestCancelSale, changePaymentMethod, splitSale, AuthError } from '../services/api';
 import { Sale, User } from '../types';
 import SalesTable from './SalesTable';
-import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw, Banknote, CreditCard, Package, PlayCircle } from 'lucide-react';
+import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw, Banknote, CreditCard, Package, PlayCircle, Calculator, Split } from 'lucide-react';
+import WorkDayModal from './WorkDayModal';
+import SplitPaymentModal from './SplitPaymentModal';
 
 interface DashboardProps {
   token: string;
@@ -23,6 +25,9 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
   const [endDate, setEndDate] = useState(today);
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isWorkDayModalOpen, setIsWorkDayModalOpen] = useState(false);
+  const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
+  const [selectedSaleForSplit, setSelectedSaleForSplit] = useState<Sale | null>(null);
   const [pendingCancellationIds, setPendingCancellationIds] = useState<number[]>([]);
   const pendingIdsRef = useRef<Set<number>>(new Set(pendingCancellationIds));
 
@@ -182,6 +187,23 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
     }
   }, [token, onLogout, loadData]);
 
+  const handleSplitSale = useCallback(async (saleId: number, amount: number, method: number, vendorName?: string) => {
+    try {
+      const result = await splitSale(token, saleId, amount, method, vendorName);
+      if (result.success) {
+        // Refresh data to show both sales
+        loadData();
+      }
+    } catch (error) {
+      if (error instanceof AuthError) {
+        onLogout();
+        return;
+      }
+      console.error('Failed to split sale:', error);
+      alert((error as Error).message || 'No se pudo dividir la venta.');
+    }
+  }, [token, onLogout, loadData]);
+
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -256,7 +278,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
 
         {/* Filters Section */}
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-          <div className="flex flex-col md:flex-row md:items-end gap-4">
+          <div className="flex flex-col md:flex-row md:items-end gap-3">
             <div className="flex-1">
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Start Date</label>
               <div className="relative">
@@ -265,7 +287,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
+                  className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
                 />
               </div>
             </div>
@@ -277,17 +299,28 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
+                  className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
                 />
               </div>
             </div>
-            <button
-              onClick={loadData}
-              disabled={loading}
-              className="flex items-center justify-center gap-2 bg-primary hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-all disabled:opacity-70 shadow-sm active:transform active:scale-95"
-            >
-              {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Refresh'}
-            </button>
+            
+            <div className="flex gap-2 w-full md:w-auto">
+              <button
+                onClick={() => setIsWorkDayModalOpen(true)}
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg font-bold transition-all shadow-md active:transform active:scale-95"
+              >
+                <Calculator className="w-5 h-5" />
+                <span>Liquidar Día</span>
+              </button>
+              <button
+                onClick={loadData}
+                disabled={loading}
+                className="md:w-12 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-600 p-2.5 rounded-lg border border-gray-200 transition-all disabled:opacity-70 active:transform active:scale-95"
+                title="Refresh"
+              >
+                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -371,9 +404,35 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
         </div>
 
         {/* Table */}
-        <SalesTable sales={sales} onCancelSale={handleSaleCancel} onChangePaymentMethod={handleChangePaymentMethod} />
+        <SalesTable 
+          sales={sales} 
+          onCancelSale={handleSaleCancel} 
+          onChangePaymentMethod={handleChangePaymentMethod} 
+          onSplitSale={(sale) => {
+            setSelectedSaleForSplit(sale);
+            setIsSplitModalOpen(true);
+          }}
+        />
 
       </main>
+
+      <WorkDayModal 
+        isOpen={isWorkDayModalOpen} 
+        onClose={() => setIsWorkDayModalOpen(false)} 
+        totalCash={stats.byMethod['cash'] || 0}
+      />
+
+      {selectedSaleForSplit && (
+        <SplitPaymentModal
+          isOpen={isSplitModalOpen}
+          sale={selectedSaleForSplit}
+          onClose={() => {
+            setIsSplitModalOpen(false);
+            setSelectedSaleForSplit(null);
+          }}
+          onConfirm={handleSplitSale}
+        />
+      )}
     </div>
   );
 };
