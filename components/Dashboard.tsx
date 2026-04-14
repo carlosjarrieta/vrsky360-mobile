@@ -287,7 +287,8 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
+                  disabled={!user.admin}
+                  className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-70"
                 />
               </div>
             </div>
@@ -299,7 +300,8 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
+                  disabled={!user.admin}
+                  className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-70"
                 />
               </div>
             </div>
