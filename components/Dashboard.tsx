@@ -13,13 +13,20 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
-  const today = (() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
+  const formatDate = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  };
+  const today = formatDate(new Date());
+  const yesterday = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return formatDate(d);
   })();
+  const minDate = user.admin ? undefined : yesterday;
+  const maxDate = user.admin ? undefined : today;
 
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
@@ -287,8 +294,9 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  disabled={!user.admin}
-                  className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-70"
+                  min={minDate}
+                  max={maxDate}
+                  className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
                 />
               </div>
             </div>
@@ -300,8 +308,9 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  disabled={!user.admin}
-                  className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-70"
+                  min={minDate}
+                  max={maxDate}
+                  className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
                 />
               </div>
             </div>
