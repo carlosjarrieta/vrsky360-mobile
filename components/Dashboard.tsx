@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { fetchSales, requestCancelSale, changePaymentMethod, splitSale, AuthError } from '../services/api';
 import { Sale, User } from '../types';
 import SalesTable from './SalesTable';
-import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw, Banknote, CreditCard, Package, PlayCircle, Calculator, Split } from 'lucide-react';
+import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw, Banknote, CreditCard, Package, PlayCircle, Ticket, Calculator, Split } from 'lucide-react';
 import WorkDayModal from './WorkDayModal';
 import SplitPaymentModal from './SplitPaymentModal';
 
@@ -245,6 +245,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
       if (method === 1 || method === 'transfer') key = 'transfer';
       else if (method === 2 || method === 'package') key = 'package';
       else if (method === 3 || method === 'demo') key = 'demo';
+      else if (method === 4 || method === 'box_office') key = 'box_office';
       else key = 'cash'; // 0 or 'cash' or undefined
 
       acc[key] = (acc[key] || 0) + sale.amount;
@@ -410,6 +411,16 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
             <div>
               <p className="text-xs text-gray-500 font-medium uppercase">Demo</p>
               <p className="text-lg font-bold text-gray-800">${(stats.byMethod['demo'] || 0).toLocaleString('en-US')}</p>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3">
+            <div className="bg-amber-50 p-2 rounded-lg text-amber-600">
+              <Ticket className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium uppercase">Taquilla</p>
+              <p className="text-lg font-bold text-gray-800">${(stats.byMethod['box_office'] || 0).toLocaleString('en-US')}</p>
             </div>
           </div>
         </div>

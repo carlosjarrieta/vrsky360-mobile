@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Sale } from '../types';
-import { ArrowDownCircle, Users, MoreHorizontal, Banknote, CreditCard, Package, PlayCircle, Check, Split } from 'lucide-react';
+import { ArrowDownCircle, Users, MoreHorizontal, Banknote, CreditCard, Package, PlayCircle, Ticket, Check, Split } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 
 const resolveGameImageUrl = (imageUrl?: string) => {
@@ -22,6 +22,7 @@ const PAYMENT_METHODS = [
   { label: 'Transferencia', value: 1, icon: CreditCard, id: 'transfer' },
   { label: 'Paquete', value: 2, icon: Package, id: 'package' },
   { label: 'Demo', value: 3, icon: PlayCircle, id: 'demo' },
+  { label: 'Taquilla', value: 4, icon: Ticket, id: 'box_office' },
 ];
 
 const PAYMENT_METHOD_LABELS: Record<string | number, string> = {
@@ -29,6 +30,7 @@ const PAYMENT_METHOD_LABELS: Record<string | number, string> = {
   transfer: 'Transferencia', 1: 'Transferencia',
   package: 'Paquete', 2: 'Paquete',
   demo: 'Demo', 3: 'Demo',
+  box_office: 'Taquilla', 4: 'Taquilla',
 };
 
 const PAYMENT_METHOD_COLORS: Record<string | number, string> = {
@@ -37,6 +39,7 @@ const PAYMENT_METHOD_COLORS: Record<string | number, string> = {
   package: 'bg-blue-100 text-blue-800', 2: 'bg-blue-100 text-blue-800',
   demo: 'bg-gray-100 text-gray-800',
   3: 'bg-gray-100 text-gray-800',
+  box_office: 'bg-amber-100 text-amber-800', 4: 'bg-amber-100 text-amber-800',
 };
 
 const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePaymentMethod, onSplitSale }) => {
@@ -47,7 +50,7 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
 
-  // Vendor Modal State
+  // Vendor Modal State (asks box-office invoice number when changing to 'package')
   const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
   const [vendorName, setVendorName] = useState('');
   const [selectedSaleForVendor, setSelectedSaleForVendor] = useState<Sale | null>(null);
@@ -258,7 +261,7 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
                                     key={method.value}
                                     onClick={() => {
                                       if (method.id === 'package') {
-                                        // Open vendor modal for package
+                                        // Open modal asking the box-office invoice number
                                         setSelectedSaleForVendor(sale);
                                         setVendorName(sale.vendor_name || '');
                                         setVendorError('');
@@ -359,7 +362,7 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
         </div>
       )}
 
-      {/* Vendor Name Modal */}
+      {/* Box-office Invoice Number Modal (change to package) */}
       {isVendorModalOpen && selectedSaleForVendor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6">
           <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-200">
@@ -369,20 +372,20 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
                 <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mb-2">
                   <Package className="w-8 h-8" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-800">Nombre del Vendedor</h3>
+                <h3 className="text-lg font-bold text-gray-800">Número de Factura de Taquilla</h3>
                 <p className="text-sm text-gray-500">
-                  Para cambiar el método de pago a "Paquete", es necesario ingresar el nombre del asesor que realizó la venta.
+                  Para cambiar el método de pago a "Paquete", es necesario ingresar el número de factura de taquilla.
                 </p>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700">Nombre del Asesor</label>
+                <label className="text-sm font-medium text-gray-700">Número de factura de taquilla</label>
                 <input
                   type="text"
                   value={vendorName}
                   onChange={(e) => setVendorName(e.target.value)}
                   className="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                  placeholder="Ej. Juan Pérez"
+                  placeholder="Ej. 001234"
                   autoFocus
                 />
                 {vendorError && <p className="mt-2 text-xs text-red-600">{vendorError}</p>}
@@ -405,7 +408,7 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
                   type="button"
                   onClick={async () => {
                     if (!vendorName.trim()) {
-                      setVendorError('El nombre del vendedor es obligatorio.');
+                      setVendorError('El número de factura de taquilla es obligatorio.');
                       return;
                     }
 

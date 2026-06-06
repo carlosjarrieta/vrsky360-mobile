@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Split, Banknote, CreditCard, Package, PlayCircle, ArrowRight, AlertCircle } from 'lucide-react';
+import { X, Split, Banknote, CreditCard, Package, PlayCircle, Ticket, ArrowRight, AlertCircle } from 'lucide-react';
 import { Sale } from '../types';
 
 interface SplitPaymentModalProps {
@@ -14,6 +14,7 @@ const PAYMENT_METHODS = [
   { label: 'Transferencia', value: 1, icon: CreditCard },
   { label: 'Paquete', value: 2, icon: Package },
   { label: 'Demo', value: 3, icon: PlayCircle },
+  { label: 'Taquilla', value: 4, icon: Ticket },
 ];
 
 const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({ isOpen, onClose, sale, onConfirm }) => {
@@ -32,7 +33,7 @@ const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({ isOpen, onClose, 
     }
 
     if (method === 2 && !vendorName.trim()) {
-      setError('El nombre del asesor es obligatorio para "Paquete"');
+      setError('El número de factura de taquilla es obligatorio para "Paquete"');
       return;
     }
 
@@ -120,16 +121,16 @@ const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({ isOpen, onClose, 
               </div>
             </div>
 
-            {/* Vendor Name (only if package) */}
+            {/* Box-office invoice number (only if package) */}
             {method === 2 && (
               <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-200">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Nombre del Asesor</label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Número de factura de taquilla</label>
                 <input
                   type="text"
                   value={vendorName}
                   onChange={(e) => setVendorName(e.target.value)}
                   className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
-                  placeholder="Quien hizo la venta?"
+                  placeholder="Ej. 001234"
                 />
               </div>
             )}
