@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { fetchSales, AuthError } from '../services/api';
 import { Sale, User, Machine } from '../types';
 import SalesTable from './SalesTable';
-import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw, Banknote, CreditCard, Package, PlayCircle, Building2, Filter } from 'lucide-react';
+import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw, Banknote, CreditCard, Package, PlayCircle, Ticket, Building2, Filter } from 'lucide-react';
 
 interface AdminDashboardProps {
     token: string;
@@ -84,6 +84,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
             if (method === 1 || method === 'transfer') key = 'transfer';
             else if (method === 2 || method === 'package') key = 'package';
             else if (method === 3 || method === 'demo') key = 'demo';
+            else if (method === 4 || method === 'box_office') key = 'box_office';
             else key = 'cash';
 
             acc[key] = (acc[key] || 0) + sale.amount;
@@ -126,6 +127,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                         transfer: 0,
                         package: 0,
                         demo: 0,
+                        box_office: 0,
                     },
                 });
             }
@@ -145,6 +147,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
             if (method === 1 || method === 'transfer') methodKey = 'transfer';
             else if (method === 2 || method === 'package') methodKey = 'package';
             else if (method === 3 || method === 'demo') methodKey = 'demo';
+            else if (method === 4 || method === 'box_office') methodKey = 'box_office';
             else methodKey = 'cash';
 
             stats.byMethod[methodKey] += sale.amount;
@@ -336,6 +339,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                                     <p className="text-lg font-bold text-gray-800">${(stats.byMethod['demo'] || 0).toLocaleString('en-US')}</p>
                                 </div>
                             </div>
+
+                            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3">
+                                <div className="bg-amber-50 p-2 rounded-lg text-amber-600">
+                                    <Ticket className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 font-medium uppercase">Taquilla</p>
+                                    <p className="text-lg font-bold text-gray-800">${(stats.byMethod['box_office'] || 0).toLocaleString('en-US')}</p>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Machine Stats Table */}
@@ -375,6 +388,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                                                     Demo
                                                 </div>
                                             </th>
+                                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <Ticket className="w-3 h-3" />
+                                                    Taquilla
+                                                </div>
+                                            </th>
                                             <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Total</th>
                                             <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Juegos</th>
                                             <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
@@ -397,6 +416,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-right font-medium text-gray-600">
                                                     ${(stat.byMethod.demo || 0).toLocaleString('en-US')}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-right font-medium text-amber-600">
+                                                    ${(stat.byMethod.box_office || 0).toLocaleString('en-US')}
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-right font-bold text-green-700">
                                                     ${stat.revenue.toLocaleString('en-US')}
@@ -510,6 +532,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                                     <div>
                                         <p className="text-xs text-gray-500 font-medium uppercase">Demo</p>
                                         <p className="text-lg font-bold text-gray-800">${(stats.byMethod['demo'] || 0).toLocaleString('en-US')}</p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3">
+                                    <div className="bg-amber-50 p-2 rounded-lg text-amber-600">
+                                        <Ticket className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500 font-medium uppercase">Taquilla</p>
+                                        <p className="text-lg font-bold text-gray-800">${(stats.byMethod['box_office'] || 0).toLocaleString('en-US')}</p>
                                     </div>
                                 </div>
                             </div>
