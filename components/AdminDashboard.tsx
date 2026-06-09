@@ -479,6 +479,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                                     <div>
                                         <p className="text-sm text-gray-500 font-medium">Ingresos</p>
                                         <p className="text-2xl font-bold text-gray-800">${stats.totalRevenue.toLocaleString('en-US')}</p>
+                                        <p className="text-xs text-gray-400">Venta real: ${stats.totalReal.toLocaleString('en-US')}</p>
                                     </div>
                                 </div>
 
@@ -534,6 +535,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                                     <div>
                                         <p className="text-xs text-gray-500 font-medium uppercase">Paquete</p>
                                         <p className="text-lg font-bold text-gray-800">${(stats.byMethod['package'] || 0).toLocaleString('en-US')}</p>
+                                        <p className="text-xs text-gray-400">Real: ${(stats.byMethodReal['package'] || 0).toLocaleString('en-US')}</p>
                                     </div>
                                 </div>
 
@@ -554,6 +556,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                                     <div>
                                         <p className="text-xs text-gray-500 font-medium uppercase">Taquilla</p>
                                         <p className="text-lg font-bold text-gray-800">${(stats.byMethod['box_office'] || 0).toLocaleString('en-US')}</p>
+                                        <p className="text-xs text-gray-400">Real: ${(stats.byMethodReal['box_office'] || 0).toLocaleString('en-US')}</p>
                                     </div>
                                 </div>
                             </div>
