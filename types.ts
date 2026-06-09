@@ -41,6 +41,9 @@ export interface Sale {
   payment_method?: string | number;
   machine_id?: number;
   machine_name?: string;
+  owner_amount?: number;
+  operator_amount?: number;
+  original_amount?: number;
 }
 
 export interface SalesApiResponse {
