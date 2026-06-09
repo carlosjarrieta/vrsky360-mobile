@@ -77,30 +77,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
         const totalPlayers = activeSales.reduce((sum, sale) => sum + sale.player_count, 0);
         const totalGames = activeSales.length;
 
-        const methodKey = (method: string | number | undefined) => {
-            if (method === 1 || method === 'transfer') return 'transfer';
-            if (method === 2 || method === 'package') return 'package';
-            if (method === 3 || method === 'demo') return 'demo';
-            if (method === 4 || method === 'box_office') return 'box_office';
-            return 'cash';
-        };
+        // Calculate totals by payment method
+        const byMethod = activeSales.reduce((acc, sale) => {
+            const method = sale.payment_method;
+            let key = 'cash';
+            if (method === 1 || method === 'transfer') key = 'transfer';
+            else if (method === 2 || method === 'package') key = 'package';
+            else if (method === 3 || method === 'demo') key = 'demo';
+            else if (method === 4 || method === 'box_office') key = 'box_office';
+            else key = 'cash';
 
-        // Registered totals by method + the real value the machine reported
-        // (original_amount = actual sale to the end consumer). Admin-only.
-        const byMethod = {} as Record<string, number>;
-        const byMethodReal = {} as Record<string, number>;
-        activeSales.forEach((sale) => {
-            const key = methodKey(sale.payment_method);
-            byMethod[key] = (byMethod[key] || 0) + sale.amount;
-            byMethodReal[key] = (byMethodReal[key] || 0) + (sale.original_amount ?? sale.amount);
-        });
+            acc[key] = (acc[key] || 0) + sale.amount;
+            return acc;
+        }, {} as Record<string, number>);
 
-        const totalReal = revenueGeneratingSales.reduce(
-            (sum, sale) => sum + (sale.original_amount ?? sale.amount),
-            0
-        );
-
-        return { totalRevenue, totalReal, totalGames, totalPlayers, byMethod, byMethodReal };
+        return { totalRevenue, totalGames, totalPlayers, byMethod };
     }, [activeSales]);
 
     // Stats by machine
@@ -281,7 +272,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                                 <div>
                                     <p className="text-sm text-gray-500 font-medium">Ingresos Totales</p>
                                     <p className="text-2xl font-bold text-gray-800">${stats.totalRevenue.toLocaleString('en-US')}</p>
-                                    <p className="text-xs text-gray-400">Venta real: ${stats.totalReal.toLocaleString('en-US')}</p>
                                 </div>
                             </div>
 
@@ -337,7 +327,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                                 <div>
                                     <p className="text-xs text-gray-500 font-medium uppercase">Paquete</p>
                                     <p className="text-lg font-bold text-gray-800">${(stats.byMethod['package'] || 0).toLocaleString('en-US')}</p>
-                                    <p className="text-xs text-gray-400">Real: ${(stats.byMethodReal['package'] || 0).toLocaleString('en-US')}</p>
                                 </div>
                             </div>
 
@@ -358,7 +347,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                                 <div>
                                     <p className="text-xs text-gray-500 font-medium uppercase">Taquilla</p>
                                     <p className="text-lg font-bold text-gray-800">${(stats.byMethod['box_office'] || 0).toLocaleString('en-US')}</p>
-                                    <p className="text-xs text-gray-400">Real: ${(stats.byMethodReal['box_office'] || 0).toLocaleString('en-US')}</p>
                                 </div>
                             </div>
                         </div>
@@ -479,7 +467,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                                     <div>
                                         <p className="text-sm text-gray-500 font-medium">Ingresos</p>
                                         <p className="text-2xl font-bold text-gray-800">${stats.totalRevenue.toLocaleString('en-US')}</p>
-                                        <p className="text-xs text-gray-400">Venta real: ${stats.totalReal.toLocaleString('en-US')}</p>
                                     </div>
                                 </div>
 
@@ -535,7 +522,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                                     <div>
                                         <p className="text-xs text-gray-500 font-medium uppercase">Paquete</p>
                                         <p className="text-lg font-bold text-gray-800">${(stats.byMethod['package'] || 0).toLocaleString('en-US')}</p>
-                                        <p className="text-xs text-gray-400">Real: ${(stats.byMethodReal['package'] || 0).toLocaleString('en-US')}</p>
                                     </div>
                                 </div>
 
@@ -556,7 +542,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                                     <div>
                                         <p className="text-xs text-gray-500 font-medium uppercase">Taquilla</p>
                                         <p className="text-lg font-bold text-gray-800">${(stats.byMethod['box_office'] || 0).toLocaleString('en-US')}</p>
-                                        <p className="text-xs text-gray-400">Real: ${(stats.byMethodReal['box_office'] || 0).toLocaleString('en-US')}</p>
                                     </div>
                                 </div>
                             </div>
