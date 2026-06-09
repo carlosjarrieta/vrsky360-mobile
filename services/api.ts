@@ -221,7 +221,8 @@ export const changePaymentMethod = async (
     }
 
     const payload = await response.json();
-    return { success: true, sale: payload.sale };
+    // Backend returns the recalculated sale (amount + owner/operator split) under `data`.
+    return { success: true, sale: payload.data };
   } catch (error) {
     console.error('Change payment method failed', error);
     throw error;

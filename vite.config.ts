@@ -40,11 +40,6 @@ export default defineConfig(({ mode }) => {
                 purpose: 'any maskable'
               }
             ],
-            apple: {
-              'apple-mobile-web-app-capable': 'yes',
-              'apple-mobile-web-app-status-bar-style': 'black-translucent',
-              'apple-mobile-web-app-title': 'VR360'
-            },
             screenshots: [
               {
                 src: '/pwa-512x512.png',
