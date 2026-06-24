@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { AuthResponse, Sale, SalesApiResponse } from '../types';
+import { AuthResponse, BirthdayEvent, BirthdayEventInput, BirthdayEventsApiResponse, Sale, SalesApiResponse } from '../types';
 
 const apiBase = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:3001/api/v1').replace(/\/+$/, '');
 export const API_BASE_URL = apiBase;
@@ -8,6 +8,7 @@ const SALES_URL = `${apiBase}/sales`;
 const CANCEL_URL = `${apiBase}/request_cancel`;
 const PAYMENT_METHODS_URL = `${apiBase}/change_payment_method`;
 const SPLIT_SALE_URL = `${apiBase}/sales/split`;
+const BIRTHDAY_EVENTS_URL = `${apiBase}/birthday_events`;
 
 // Custom Auth error used to indicate the token is invalid/expired
 export class AuthError extends Error {
@@ -266,4 +267,103 @@ export const splitSale = async (
     console.error('Split sale failed:', error);
     throw error;
   }
+};
+
+// Today's birthday events for the operator's machine. No mock fallback: if the
+// list cannot be loaded we want the operator to see it, not fake data.
+export const fetchBirthdayEvents = async (token: string): Promise<BirthdayEvent[]> => {
+  const response = await fetch(BIRTHDAY_EVENTS_URL, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (response.status === 401) {
+    throw new AuthError('Token expired or unauthorized');
+  }
+  if (!response.ok) {
+    throw new Error('No se pudieron cargar los cumpleaños');
+  }
+
+  const payload: BirthdayEventsApiResponse = await response.json();
+  return payload.data || [];
+};
+
+// Edits an active birthday event (correct children count / responsible).
+export const updateBirthdayEvent = async (
+  token: string,
+  id: number,
+  changes: BirthdayEventInput
+): Promise<BirthdayEvent> => {
+  const response = await fetch(`${BIRTHDAY_EVENTS_URL}/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(changes),
+  });
+
+  if (response.status === 401) {
+    throw new AuthError('Token expired or unauthorized');
+  }
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'No se pudo actualizar el evento');
+  }
+
+  const payload = await response.json();
+  return payload.data as BirthdayEvent;
+};
+
+// Soft-deletes a birthday event. A reason is mandatory and is stored on the
+// backend for audit (the event is not physically removed).
+export const deleteBirthdayEvent = async (
+  token: string,
+  id: number,
+  reason: string
+): Promise<void> => {
+  const response = await fetch(`${BIRTHDAY_EVENTS_URL}/${id}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ reason }),
+  });
+
+  if (response.status === 401) {
+    throw new AuthError('Token expired or unauthorized');
+  }
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'No se pudo eliminar el evento');
+  }
+};
+
+// Registers one or more birthday events in a single batch.
+export const registerBirthdayEvents = async (
+  token: string,
+  events: BirthdayEventInput[]
+): Promise<BirthdayEvent[]> => {
+  const response = await fetch(BIRTHDAY_EVENTS_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ events }),
+  });
+
+  if (response.status === 401) {
+    throw new AuthError('Token expired or unauthorized');
+  }
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'No se pudieron registrar los cumpleaños');
+  }
+
+  const payload: BirthdayEventsApiResponse = await response.json();
+  return payload.data || [];
 };

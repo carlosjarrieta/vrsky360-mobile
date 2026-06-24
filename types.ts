@@ -50,6 +50,29 @@ export interface SalesApiResponse {
   data: Sale[];
 }
 
+// A single birthday event the operator registers (one row in the form).
+export interface BirthdayEventInput {
+  children_count: number;
+  responsible_name?: string;
+  note?: string;
+  event_date?: string; // YYYY-MM-DD; defaults to today on the backend
+}
+
+export interface BirthdayEvent {
+  id: number;
+  event_date: string;
+  children_count: number;
+  responsible_name?: string | null;
+  note?: string | null;
+  reconciled: boolean;
+  created_at: string;
+}
+
+export interface BirthdayEventsApiResponse {
+  success: boolean;
+  data: BirthdayEvent[];
+}
+
 export interface ApiError {
   message: string;
 }

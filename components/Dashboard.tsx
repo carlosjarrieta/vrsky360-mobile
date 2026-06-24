@@ -2,9 +2,10 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { fetchSales, requestCancelSale, changePaymentMethod, splitSale, AuthError } from '../services/api';
 import { Sale, User } from '../types';
 import SalesTable from './SalesTable';
-import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw, Banknote, CreditCard, Package, PlayCircle, Ticket, Calculator, Split } from 'lucide-react';
+import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw, Banknote, CreditCard, Package, PlayCircle, Ticket, Calculator, Split, Cake } from 'lucide-react';
 import WorkDayModal from './WorkDayModal';
 import SplitPaymentModal from './SplitPaymentModal';
+import BirthdayEventsModal from './BirthdayEventsModal';
 
 interface DashboardProps {
   token: string;
@@ -33,6 +34,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(false);
   const [isWorkDayModalOpen, setIsWorkDayModalOpen] = useState(false);
+  const [isBirthdayModalOpen, setIsBirthdayModalOpen] = useState(false);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [selectedSaleForSplit, setSelectedSaleForSplit] = useState<Sale | null>(null);
   const [pendingCancellationIds, setPendingCancellationIds] = useState<number[]>([]);
@@ -318,12 +320,21 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
             
             <div className="flex gap-2 w-full md:w-auto">
               <button
+                onClick={() => setIsBirthdayModalOpen(true)}
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2.5 rounded-lg font-bold transition-all shadow-md active:transform active:scale-95"
+              >
+                <Cake className="w-5 h-5" />
+                <span>Cumpleaños</span>
+              </button>
+              {/* Oculto por ahora — descomentar para reactivar "Liquidar Día"
+              <button
                 onClick={() => setIsWorkDayModalOpen(true)}
                 className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg font-bold transition-all shadow-md active:transform active:scale-95"
               >
                 <Calculator className="w-5 h-5" />
                 <span>Liquidar Día</span>
               </button>
+              */}
               <button
                 onClick={loadData}
                 disabled={loading}
@@ -438,10 +449,17 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
 
       </main>
 
-      <WorkDayModal 
-        isOpen={isWorkDayModalOpen} 
-        onClose={() => setIsWorkDayModalOpen(false)} 
+      <WorkDayModal
+        isOpen={isWorkDayModalOpen}
+        onClose={() => setIsWorkDayModalOpen(false)}
         totalCash={stats.byMethod['cash'] || 0}
+      />
+
+      <BirthdayEventsModal
+        isOpen={isBirthdayModalOpen}
+        token={token}
+        onClose={() => setIsBirthdayModalOpen(false)}
+        onAuthError={onLogout}
       />
 
       {selectedSaleForSplit && (
