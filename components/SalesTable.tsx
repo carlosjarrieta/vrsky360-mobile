@@ -111,6 +111,7 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
               sales.map((sale) => {
                 const imageUrl = resolveGameImageUrl(sale.game_image_url);
                 const isPending = sale.pending ?? sale.pendingCancellation;
+                const isAdjustment = sale.adjustment === true;
                 const rowStateClass = sale.canceled
                   ? 'bg-red-50 text-gray-500 hover:bg-red-50'
                   : isPending
@@ -169,6 +170,11 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${PAYMENT_METHOD_COLORS[sale.payment_method || 'cash'] || PAYMENT_METHOD_COLORS['cash']}`}>
                           {PAYMENT_METHOD_LABELS[sale.payment_method || 'cash'] || sale.payment_method}
                         </span>
+                        {isAdjustment && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-pink-100 text-pink-700">
+                            Ajuste cumpleaños
+                          </span>
+                        )}
                         <span className="text-xs text-gray-400">ID: {sale.id}</span>
                       </div>
                     </td>
@@ -176,6 +182,9 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
                       ${sale.amount.toLocaleString('en-US', { minimumFractionDigits: 0 })}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right">
+                      {isAdjustment ? (
+                        <span className="text-gray-300">—</span>
+                      ) : (
                       <div className="relative">
                         <button
                           type="button"
@@ -292,6 +301,7 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
                           </>
                         )}
                       </div>
+                      )}
                     </td>
                   </tr>
                 );
