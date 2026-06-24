@@ -44,6 +44,8 @@ export interface Sale {
   owner_amount?: number;
   operator_amount?: number;
   original_amount?: number;
+  adjustment?: boolean;
+  vendor_name?: string;
 }
 
 export interface SalesApiResponse {
@@ -68,9 +70,23 @@ export interface BirthdayEvent {
   created_at: string;
 }
 
+// Per-day reconciliation: how many tickets sold vs redeemed vs still pending.
+export interface BirthdayDaySummary {
+  date: string;
+  registered: number;
+  redeemed: number;
+  pending: number;
+}
+
 export interface BirthdayEventsApiResponse {
   success: boolean;
   data: BirthdayEvent[];
+  summary?: BirthdayDaySummary[];
+}
+
+export interface BirthdayEventsResult {
+  events: BirthdayEvent[];
+  summary: BirthdayDaySummary[];
 }
 
 export interface ApiError {

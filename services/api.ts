@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { AuthResponse, BirthdayEvent, BirthdayEventInput, BirthdayEventsApiResponse, Sale, SalesApiResponse } from '../types';
+import { AuthResponse, BirthdayEvent, BirthdayEventInput, BirthdayEventsApiResponse, BirthdayEventsResult, Sale, SalesApiResponse } from '../types';
 
 const apiBase = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:3001/api/v1').replace(/\/+$/, '');
 export const API_BASE_URL = apiBase;
@@ -269,9 +269,9 @@ export const splitSale = async (
   }
 };
 
-// Today's birthday events for the operator's machine. No mock fallback: if the
-// list cannot be loaded we want the operator to see it, not fake data.
-export const fetchBirthdayEvents = async (token: string): Promise<BirthdayEvent[]> => {
+// Recent birthday events + per-day reconciliation summary for the operator's
+// machine. No mock fallback: if it can't load we want the operator to see it.
+export const fetchBirthdayEvents = async (token: string): Promise<BirthdayEventsResult> => {
   const response = await fetch(BIRTHDAY_EVENTS_URL, {
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -287,7 +287,7 @@ export const fetchBirthdayEvents = async (token: string): Promise<BirthdayEvent[
   }
 
   const payload: BirthdayEventsApiResponse = await response.json();
-  return payload.data || [];
+  return { events: payload.data || [], summary: payload.summary || [] };
 };
 
 // Edits an active birthday event (correct children count / responsible).

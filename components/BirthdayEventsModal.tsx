@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Cake, Plus, Trash2, Check, Pencil } from 'lucide-react';
-import { BirthdayEvent, BirthdayEventInput } from '../types';
+import { BirthdayEvent, BirthdayEventInput, BirthdayDaySummary } from '../types';
 import { fetchBirthdayEvents, registerBirthdayEvents, updateBirthdayEvent, deleteBirthdayEvent, AuthError } from '../services/api';
 
 const formatEventDate = (iso: string): string => {
@@ -31,6 +31,7 @@ const BirthdayEventsModal: React.FC<BirthdayEventsModalProps> = ({ isOpen, token
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [eventDate, setEventDate] = useState<string>(todayISO());
   const [todayEvents, setTodayEvents] = useState<BirthdayEvent[]>([]);
+  const [daySummaries, setDaySummaries] = useState<BirthdayDaySummary[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   // Deletion flow (asks for a mandatory reason before removing).
@@ -48,8 +49,9 @@ const BirthdayEventsModal: React.FC<BirthdayEventsModalProps> = ({ isOpen, token
 
   const loadToday = useCallback(async () => {
     try {
-      const events = await fetchBirthdayEvents(token);
+      const { events, summary } = await fetchBirthdayEvents(token);
       setTodayEvents(events);
+      setDaySummaries(summary);
     } catch (err) {
       if (err instanceof AuthError) {
         onAuthError();
@@ -263,6 +265,34 @@ const BirthdayEventsModal: React.FC<BirthdayEventsModalProps> = ({ isOpen, token
           >
             {saving ? 'Guardando...' : `Registrar ${totalChildren > 0 ? `(${totalChildren} niños)` : ''}`}
           </button>
+
+          {/* Pending tickets per day — updates as children ride */}
+          {daySummaries.some((s) => s.registered > 0) && (
+            <div className="pt-2">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Tickets por canjear</h3>
+              <div className="space-y-1.5">
+                {daySummaries.filter((s) => s.registered > 0).map((s) => (
+                  <div key={s.date} className="flex justify-between items-center bg-gray-50 rounded-lg px-3 py-2 text-sm border border-gray-100 gap-2">
+                    <div className="min-w-0">
+                      <div className="text-[11px] text-gray-400">{formatEventDate(s.date)}</div>
+                      <div className="text-gray-600 text-xs">
+                        {s.redeemed}/{s.registered} canjeados
+                      </div>
+                    </div>
+                    {s.pending > 0 ? (
+                      <span className="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                        Faltan {s.pending}
+                      </span>
+                    ) : (
+                      <span className="shrink-0 flex items-center gap-1 text-emerald-600 text-xs font-semibold">
+                        <Check className="w-3.5 h-3.5" /> Todos canjeados
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Today's registered events */}
           {todayEvents.length > 0 && (
