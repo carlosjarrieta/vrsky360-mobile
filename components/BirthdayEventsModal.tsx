@@ -309,25 +309,28 @@ const BirthdayEventsModal: React.FC<BirthdayEventsModalProps> = ({ isOpen, token
                       <div className="text-[11px] text-gray-400">{formatEventDate(ev.event_date)}</div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {ev.reconciled && (
+                      {ev.reconciled ? (
                         <span className="flex items-center gap-1 text-emerald-600 text-xs font-semibold">
                           <Check className="w-3.5 h-3.5" /> Conciliado
                         </span>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => openEdit(ev)}
+                            className="p-1.5 rounded-lg text-primary hover:bg-blue-50 transition-colors"
+                            aria-label="Editar evento"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => openDelete(ev)}
+                            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                            aria-label="Eliminar evento"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
                       )}
-                      <button
-                        onClick={() => openEdit(ev)}
-                        className="p-1.5 rounded-lg text-primary hover:bg-blue-50 transition-colors"
-                        aria-label="Editar evento"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => openDelete(ev)}
-                        className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
-                        aria-label="Eliminar evento"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
                     </div>
                   </div>
                 ))}

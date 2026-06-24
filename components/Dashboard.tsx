@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { fetchSales, requestCancelSale, changePaymentMethod, splitSale, AuthError } from '../services/api';
-import { Sale, User } from '../types';
+import { fetchSales, requestCancelSale, changePaymentMethod, splitSale, fetchBirthdayEvents, AuthError } from '../services/api';
+import { Sale, User, BirthdayDaySummary } from '../types';
 import SalesTable from './SalesTable';
 import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw, Banknote, CreditCard, Package, PlayCircle, Ticket, Calculator, Split, Cake } from 'lucide-react';
 import WorkDayModal from './WorkDayModal';
@@ -32,6 +32,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [birthdaySummary, setBirthdaySummary] = useState<BirthdayDaySummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [isWorkDayModalOpen, setIsWorkDayModalOpen] = useState(false);
   const [isBirthdayModalOpen, setIsBirthdayModalOpen] = useState(false);
@@ -76,6 +77,15 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
 
       setPendingCancellationIds(Array.from(pendingIds));
       setSales(enriched);
+
+      // Birthday reconciliation summary for the selected range (non-fatal).
+      try {
+        const { summary } = await fetchBirthdayEvents(token, startDate, endDate);
+        setBirthdaySummary(summary);
+      } catch (bErr) {
+        if (bErr instanceof AuthError) throw bErr;
+        console.error('Failed to fetch birthday summary', bErr);
+      }
     } catch (error) {
       // If token is invalid or expired, redirect to login via onLogout
       if (error instanceof AuthError) {
@@ -257,6 +267,13 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
     return { totalRevenue, totalGames, totalPlayers, byMethod };
   }, [activeSales]);
 
+  const birthdayStats = useMemo(() => {
+    const registered = birthdaySummary.reduce((s, d) => s + d.registered, 0);
+    const redeemed = birthdaySummary.reduce((s, d) => s + d.redeemed, 0);
+    const pending = birthdaySummary.reduce((s, d) => s + d.pending, 0);
+    return { registered, redeemed, pending };
+  }, [birthdaySummary]);
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Navigation Bar - Bootstrap style primary color */}
@@ -434,6 +451,23 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
               <p className="text-lg font-bold text-gray-800">${(stats.byMethod['box_office'] || 0).toLocaleString('en-US')}</p>
             </div>
           </div>
+
+          {birthdayStats.registered > 0 && (
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${birthdayStats.pending > 0 ? 'bg-pink-50 text-pink-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                <Cake className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-medium uppercase">Cumpleaños por canjear</p>
+                {birthdayStats.pending > 0 ? (
+                  <p className="text-lg font-bold text-pink-600">Faltan {birthdayStats.pending}</p>
+                ) : (
+                  <p className="text-lg font-bold text-emerald-600">Todos canjeados</p>
+                )}
+                <p className="text-[11px] text-gray-400">{birthdayStats.redeemed}/{birthdayStats.registered} canjeados</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Table */}

@@ -271,8 +271,16 @@ export const splitSale = async (
 
 // Recent birthday events + per-day reconciliation summary for the operator's
 // machine. No mock fallback: if it can't load we want the operator to see it.
-export const fetchBirthdayEvents = async (token: string): Promise<BirthdayEventsResult> => {
-  const response = await fetch(BIRTHDAY_EVENTS_URL, {
+export const fetchBirthdayEvents = async (
+  token: string,
+  startDate?: string,
+  endDate?: string
+): Promise<BirthdayEventsResult> => {
+  const url = new URL(BIRTHDAY_EVENTS_URL);
+  if (startDate) url.searchParams.append('start_date', startDate);
+  if (endDate) url.searchParams.append('end_date', endDate);
+
+  const response = await fetch(url.toString(), {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
