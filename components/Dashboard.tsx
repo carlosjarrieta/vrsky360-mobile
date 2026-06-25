@@ -271,7 +271,9 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
     const registered = birthdaySummary.reduce((s, d) => s + d.registered, 0);
     const redeemed = birthdaySummary.reduce((s, d) => s + d.redeemed, 0);
     const pending = birthdaySummary.reduce((s, d) => s + d.pending, 0);
-    return { registered, redeemed, pending };
+    // Past tense once every day in range is reconciled (the gap was already billed).
+    const settled = birthdaySummary.length > 0 && birthdaySummary.every((d) => d.reconciled);
+    return { registered, redeemed, pending, settled };
   }, [birthdaySummary]);
 
   return (
@@ -460,7 +462,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
               <div>
                 <p className="text-xs text-gray-500 font-medium uppercase">Cumpleaños por canjear</p>
                 {birthdayStats.pending > 0 ? (
-                  <p className="text-lg font-bold text-pink-600">Faltan {birthdayStats.pending}</p>
+                  <p className="text-lg font-bold text-pink-600">{birthdayStats.settled ? 'Faltaron' : 'Faltan'} {birthdayStats.pending}</p>
                 ) : (
                   <p className="text-lg font-bold text-emerald-600">Todos canjeados</p>
                 )}

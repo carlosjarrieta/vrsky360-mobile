@@ -76,6 +76,7 @@ export interface BirthdayDaySummary {
   registered: number;
   redeemed: number;
   pending: number;
+  reconciled: boolean;
 }
 
 export interface BirthdayEventsApiResponse {

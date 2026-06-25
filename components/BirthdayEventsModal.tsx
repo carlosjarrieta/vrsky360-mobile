@@ -281,7 +281,7 @@ const BirthdayEventsModal: React.FC<BirthdayEventsModalProps> = ({ isOpen, token
                     </div>
                     {s.pending > 0 ? (
                       <span className="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
-                        Faltan {s.pending}
+                        {s.reconciled ? 'Faltaron' : 'Faltan'} {s.pending}
                       </span>
                     ) : (
                       <span className="shrink-0 flex items-center gap-1 text-emerald-600 text-xs font-semibold">
