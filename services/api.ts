@@ -18,45 +18,9 @@ export class AuthError extends Error {
   }
 }
 
-// Mock data generator for demonstration when API is unreachable
-const generateMockSales = (startDate: string, endDate: string): Sale[] => {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const sales: Sale[] = [];
-  const games = ['ironcar', 'skywars', 'zombie-run', 'dino-race'];
-  
-  // Generate some random sales between dates
-  let idCounter = 786;
-  
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const dailyCount = Math.floor(Math.random() * 8) + 1; // 1-8 sales per day
-    for (let i = 0; i < dailyCount; i++) {
-      const gameName = games[Math.floor(Math.random() * games.length)];
-      const playerCount = Math.floor(Math.random() * 4) + 1;
-      
-      sales.push({
-        id: idCounter++,
-        sale_origin_id: idCounter + 1000,
-        game_name: gameName,
-        pay_time: Math.floor(1000000000 + Math.random() * 9000000000).toString(),
-        amount: Math.floor(Math.random() * 50000) + 10000, // Example amounts like 30000.0
-        created_at: d.toISOString(),
-        updated_at: d.toISOString(),
-        player_count: playerCount,
-        machine: {
-          id: 1,
-          name: "VR Machine 1",
-          model: "VR-1000"
-        },
-        enterprise: {
-          id: 1,
-          name: "VR360"
-        }
-      });
-    }
-  }
-  return sales;
-};
+// Network-level failure (server down, no connectivity). Never masked with mock
+// data: the operator must know the app is offline, not see invented sales.
+export const CONNECTION_ERROR_MESSAGE = 'No se pudo conectar con el servidor. Verifica tu conexión e intenta de nuevo.';
 
 const normalizeAuthPayload = (payload: unknown): AuthResponse => {
   const source = (payload && typeof payload === 'object') ? (payload as Record<string, unknown>) : {};
@@ -81,72 +45,56 @@ const normalizeAuthPayload = (payload: unknown): AuthResponse => {
 };
 
 export const loginUser = async (email: string, password: string): Promise<AuthResponse> => {
+  let response: Response;
   try {
-    const response = await fetch(LOGIN_URL, {
+    response = await fetch(LOGIN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-
-    if (!response.ok) {
-      throw new Error('Invalid credentials');
-    }
-
-    const payload = await response.json();
-    return normalizeAuthPayload(payload);
-  } catch (error) {
-    if (error instanceof Error && error.message === 'Invalid credentials') {
-      throw error;
-    }
-    console.warn("API unavailable, using mock login for demo purposes.");
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Mock success if email is provided
-    if (email) {
-      return {
-        token: "mock-jwt-token-12345",
-        user: { id: 1, email, name: "Admin VR360" }
-      };
-    }
-    throw error;
+  } catch {
+    throw new Error(CONNECTION_ERROR_MESSAGE);
   }
+
+  if (response.status === 401 || response.status === 403 || response.status === 422) {
+    throw new Error('Correo o contraseña incorrectos.');
+  }
+  if (!response.ok) {
+    throw new Error('Error del servidor al iniciar sesión. Intenta de nuevo.');
+  }
+
+  const payload = await response.json();
+  return normalizeAuthPayload(payload);
 };
 
 export const fetchSales = async (token: string, startDate: string, endDate: string): Promise<Sale[]> => {
-  try {
-    const url = new URL(SALES_URL);
-    url.searchParams.append('start_date', startDate);
-    url.searchParams.append('end_date', endDate);
+  const url = new URL(SALES_URL);
+  url.searchParams.append('start_date', startDate);
+  url.searchParams.append('end_date', endDate);
 
-    const response = await fetch(url.toString(), {
+  let response: Response;
+  try {
+    response = await fetch(url.toString(), {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
-
-    if (response.status === 401) {
-      // Token expired or unauthorized
-      throw new AuthError('Token expired or unauthorized');
-    }
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch sales');
-    }
-
-    const jsonResponse: SalesApiResponse = await response.json();
-    return jsonResponse.data || []; // Handle { data: [...] } structure
-  } catch (error) {
-    // If the error is related to authorization, rethrow so caller can redirect to login
-    if (error instanceof AuthError) {
-      throw error;
-    }
-
-    console.warn("API unavailable or failed, returning mock sales data.");
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return generateMockSales(startDate, endDate);
+  } catch {
+    throw new Error(CONNECTION_ERROR_MESSAGE);
   }
+
+  if (response.status === 401) {
+    // Token expired or unauthorized
+    throw new AuthError('Token expired or unauthorized');
+  }
+
+  if (!response.ok) {
+    throw new Error('No se pudieron cargar las ventas. Intenta de nuevo.');
+  }
+
+  const jsonResponse: SalesApiResponse = await response.json();
+  return jsonResponse.data || []; // Handle { data: [...] } structure
 };
 
 export const requestCancelSale = async (

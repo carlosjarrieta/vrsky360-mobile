@@ -39,6 +39,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [selectedSaleForSplit, setSelectedSaleForSplit] = useState<Sale | null>(null);
   const [pendingCancellationIds, setPendingCancellationIds] = useState<number[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const pendingIdsRef = useRef<Set<number>>(new Set(pendingCancellationIds));
 
   useEffect(() => {
@@ -47,6 +48,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
 
   const loadData = React.useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const data = await fetchSales(token, startDate, endDate);
       const pendingIds = new Set(pendingIdsRef.current);
@@ -93,6 +95,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
         return;
       }
       console.error("Failed to fetch sales", error);
+      setLoadError(error instanceof Error && error.message ? error.message : 'No se pudieron cargar las ventas.');
     } finally {
       setLoading(false);
     }
@@ -304,6 +307,18 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
 
       {/* Main Content */}
       <main className="flex-grow container mx-auto px-4 py-6 space-y-6">
+
+        {loadError && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md flex items-center justify-between gap-3">
+            <p className="text-sm text-red-700 font-medium">{loadError}</p>
+            <button
+              onClick={loadData}
+              className="text-sm font-semibold text-red-700 underline whitespace-nowrap"
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
 
         {/* Filters Section */}
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">

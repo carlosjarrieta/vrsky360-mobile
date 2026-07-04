@@ -22,7 +22,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       const data = await loginUser(email, password);
       onLoginSuccess(data);
     } catch (err) {
-      setError('Invalid email or password. Please try again.');
+      setError(err instanceof Error && err.message ? err.message : 'No se pudo iniciar sesión. Intenta de nuevo.');
     } finally {
       setIsLoading(false);
     }

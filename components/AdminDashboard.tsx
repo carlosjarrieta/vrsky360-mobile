@@ -25,9 +25,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
     const [loading, setLoading] = useState(false);
     const [selectedMachine, setSelectedMachine] = useState<number | null>(null);
     const [showMachineDetail, setShowMachineDetail] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     const loadData = useCallback(async () => {
         setLoading(true);
+        setLoadError(null);
         try {
             const data = await fetchSales(token, startDate, endDate);
             setSales(data);
@@ -37,6 +39,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                 return;
             }
             console.error("Failed to fetch sales", error);
+            setLoadError(error instanceof Error && error.message ? error.message : 'No se pudieron cargar las ventas.');
         } finally {
             setLoading(false);
         }
@@ -212,6 +215,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
 
             {/* Main Content */}
             <main className="flex-grow container mx-auto px-4 py-6 space-y-6">
+
+                {loadError && (
+                    <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md flex items-center justify-between gap-3">
+                        <p className="text-sm text-red-700 font-medium">{loadError}</p>
+                        <button
+                            onClick={loadData}
+                            className="text-sm font-semibold text-red-700 underline whitespace-nowrap"
+                        >
+                            Reintentar
+                        </button>
+                    </div>
+                )}
 
                 {/* Filters Section */}
                 <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
