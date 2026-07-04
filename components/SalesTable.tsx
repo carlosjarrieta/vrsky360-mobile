@@ -45,16 +45,10 @@ const PAYMENT_METHOD_COLORS: Record<string | number, string> = {
 const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePaymentMethod, onSplitSale }) => {
   const [activeSale, setActiveSale] = useState<Sale | null>(null);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
-  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top?: number; bottom?: number; left: number; maxHeight: number } | null>(null);
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
-
-  // Vendor Modal State (asks box-office invoice number when changing to 'package')
-  const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
-  const [vendorName, setVendorName] = useState('');
-  const [selectedSaleForVendor, setSelectedSaleForVendor] = useState<Sale | null>(null);
-  const [vendorError, setVendorError] = useState('');
 
   const openModal = (sale: Sale) => {
     setActiveSale(sale);
@@ -194,14 +188,18 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
                               setMenuPosition(null);
                             } else {
                               const rect = e.currentTarget.getBoundingClientRect();
-                              const menuHeight = 220; // Approximate height
-                              const spaceBelow = window.innerHeight - rect.bottom;
-                              const showAbove = spaceBelow < menuHeight;
+                              const margin = 12;
+                              const spaceBelow = window.innerHeight - rect.bottom - margin;
+                              const spaceAbove = rect.top - margin;
+                              const left = Math.max(8, rect.right - 224); // 224px = w-56
 
-                              setMenuPosition({
-                                top: showAbove ? rect.top - menuHeight : rect.bottom + 4,
-                                left: rect.right - 224, // 224px = w-56
-                              });
+                              // Open toward the larger side; the menu scrolls if it
+                              // still doesn't fit, so no option can fall off-screen.
+                              if (spaceBelow >= spaceAbove) {
+                                setMenuPosition({ top: rect.bottom + 4, left, maxHeight: spaceBelow });
+                              } else {
+                                setMenuPosition({ bottom: window.innerHeight - rect.top + 4, left, maxHeight: spaceAbove });
+                              }
                               setOpenMenuId(sale.id);
                             }
                           }}
@@ -220,8 +218,8 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
                               }}
                             />
                             <div
-                              className="fixed w-56 bg-white rounded-xl shadow-lg border border-gray-100 z-50 py-2 overflow-hidden"
-                              style={{ top: menuPosition.top, left: menuPosition.left }}
+                              className="fixed w-56 bg-white rounded-xl shadow-lg border border-gray-100 z-50 py-2 overflow-y-auto"
+                              style={{ top: menuPosition.top, bottom: menuPosition.bottom, left: menuPosition.left, maxHeight: menuPosition.maxHeight }}
                             >
                               <button
                                 type="button"
@@ -269,20 +267,9 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
                                   <button
                                     key={method.value}
                                     onClick={() => {
-                                      if (method.id === 'package') {
-                                        // Open modal asking the box-office invoice number
-                                        setSelectedSaleForVendor(sale);
-                                        setVendorName(sale.vendor_name || '');
-                                        setVendorError('');
-                                        setIsVendorModalOpen(true);
-                                        setOpenMenuId(null);
-                                        setMenuPosition(null);
-                                      } else {
-                                        // Standard update for other methods
-                                        onChangePaymentMethod(sale.id, method.value);
-                                        setOpenMenuId(null);
-                                        setMenuPosition(null);
-                                      }
+                                      onChangePaymentMethod(sale.id, method.value);
+                                      setOpenMenuId(null);
+                                      setMenuPosition(null);
                                     }}
                                     className={`w-full text-left px-4 py-2 text-sm transition-colors flex items-center justify-between ${isSelected
                                       ? 'bg-primary/5 text-primary font-medium'
@@ -372,82 +359,6 @@ const SalesTable: React.FC<SalesTableProps> = ({ sales, onCancelSale, onChangePa
         </div>
       )}
 
-      {/* Box-office Invoice Number Modal (change to package) */}
-      {isVendorModalOpen && selectedSaleForVendor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-200">
-            <div className="p-6 space-y-4">
-              <div className="flex flex-col items-center gap-3 text-center">
-                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Asignar Paquete</p>
-                <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mb-2">
-                  <Package className="w-8 h-8" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-800">Número de Factura de Taquilla</h3>
-                <p className="text-sm text-gray-500">
-                  Para cambiar el método de pago a "Paquete", es necesario ingresar el número de factura de taquilla.
-                </p>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-700">Número de factura de taquilla</label>
-                <input
-                  type="text"
-                  value={vendorName}
-                  onChange={(e) => setVendorName(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                  placeholder="Ej. 001234"
-                  autoFocus
-                />
-                {vendorError && <p className="mt-2 text-xs text-red-600">{vendorError}</p>}
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsVendorModalOpen(false);
-                    setSelectedSaleForVendor(null);
-                    setVendorName('');
-                    setVendorError('');
-                  }}
-                  className="px-4 py-2 text-sm font-semibold text-gray-600 rounded-xl border border-gray-200 hover:bg-gray-100 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!vendorName.trim()) {
-                      setVendorError('El número de factura de taquilla es obligatorio.');
-                      return;
-                    }
-
-                    if (selectedSaleForVendor) {
-                      setIsSubmitting(true);
-                      try {
-                        // 2 is the value for 'package'
-                        await onChangePaymentMethod(selectedSaleForVendor.id, 2, vendorName.trim());
-                        setIsVendorModalOpen(false);
-                        setSelectedSaleForVendor(null);
-                        setVendorName('');
-                      } catch (error) {
-                        setVendorError('No se pudo actualizar el método de pago.');
-                      } finally {
-                        setIsSubmitting(false);
-                      }
-                    }
-                  }}
-                  disabled={isSubmitting}
-                  className={`px-4 py-2 text-sm font-semibold rounded-xl text-white transition-colors ${isSubmitting ? 'bg-primary/70 cursor-wait' : 'bg-primary hover:bg-blue-700'
-                    }`}
-                >
-                  {isSubmitting ? 'Guardando...' : 'Guardar y Cambiar'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
