@@ -219,12 +219,12 @@ const BirthdayListView: React.FC<BirthdayListViewProps> = ({ token, onBack, onAu
           </div>
         )}
 
-        {/* Pending tickets per day — updates as children ride */}
-        {daySummaries.some((s) => s.registered > 0) && (
+        {/* Pending tickets per day — only days that still owe redemptions */}
+        {daySummaries.some((s) => s.pending > 0) && (
           <div>
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Tickets por canjear</h3>
             <div className="space-y-1.5">
-              {daySummaries.filter((s) => s.registered > 0).map((s) => (
+              {daySummaries.filter((s) => s.pending > 0).map((s) => (
                 <div key={s.date} className="flex justify-between items-center bg-white rounded-lg px-3 py-2 text-sm border border-gray-100 gap-2 shadow-sm">
                   <div className="min-w-0">
                     <div className="text-[11px] text-gray-400">{formatEventDate(s.date)}</div>
@@ -232,15 +232,9 @@ const BirthdayListView: React.FC<BirthdayListViewProps> = ({ token, onBack, onAu
                       {s.redeemed}/{s.registered} canjeados
                     </div>
                   </div>
-                  {s.pending > 0 ? (
-                    <span className="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
-                      {s.reconciled ? 'Faltaron' : 'Faltan'} {s.pending}
-                    </span>
-                  ) : (
-                    <span className="shrink-0 flex items-center gap-1 text-emerald-600 text-xs font-semibold">
-                      <Check className="w-3.5 h-3.5" /> Todos canjeados
-                    </span>
-                  )}
+                  <span className="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                    {s.reconciled ? 'Faltaron' : 'Faltan'} {s.pending}
+                  </span>
                 </div>
               ))}
             </div>
