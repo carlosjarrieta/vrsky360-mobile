@@ -6,6 +6,7 @@ import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw, Banknote, Cre
 import WorkDayModal from './WorkDayModal';
 import SplitPaymentModal from './SplitPaymentModal';
 import BirthdayEventsModal from './BirthdayEventsModal';
+import BirthdayListView from './BirthdayListView';
 
 interface DashboardProps {
   token: string;
@@ -36,6 +37,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
   const [loading, setLoading] = useState(false);
   const [isWorkDayModalOpen, setIsWorkDayModalOpen] = useState(false);
   const [isBirthdayModalOpen, setIsBirthdayModalOpen] = useState(false);
+  const [showBirthdayList, setShowBirthdayList] = useState(false);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [selectedSaleForSplit, setSelectedSaleForSplit] = useState<Sale | null>(null);
   const [pendingCancellationIds, setPendingCancellationIds] = useState<number[]>([]);
@@ -279,6 +281,16 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
     return { registered, redeemed, pending, settled };
   }, [birthdaySummary]);
 
+  if (showBirthdayList) {
+    return (
+      <BirthdayListView
+        token={token}
+        onBack={() => setShowBirthdayList(false)}
+        onAuthError={onLogout}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Navigation Bar - Bootstrap style primary color */}
@@ -470,7 +482,9 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
           </div>
 
           {birthdayStats.registered > 0 && (
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3">
+            <div
+              onClick={() => setShowBirthdayList(true)}
+              className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer hover:border-pink-200 transition-colors">
               <div className={`p-2 rounded-lg ${birthdayStats.pending > 0 ? 'bg-pink-50 text-pink-600' : 'bg-emerald-50 text-emerald-600'}`}>
                 <Cake className="w-5 h-5" />
               </div>
@@ -511,6 +525,10 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
         token={token}
         onClose={() => setIsBirthdayModalOpen(false)}
         onAuthError={onLogout}
+        onShowList={() => {
+          setIsBirthdayModalOpen(false);
+          setShowBirthdayList(true);
+        }}
       />
 
       {selectedSaleForSplit && (
