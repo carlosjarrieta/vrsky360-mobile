@@ -13,9 +13,9 @@ const toISO = (d: Date): string =>
 
 const todayISO = (): string => toISO(new Date());
 
-const monthAgoISO = (): string => {
+const startOfMonthISO = (): string => {
   const d = new Date();
-  d.setDate(d.getDate() - 30);
+  d.setDate(1);
   return toISO(d);
 };
 
@@ -30,7 +30,7 @@ interface BirthdayListViewProps {
 const BirthdayListView: React.FC<BirthdayListViewProps> = ({ token, onBack, onAuthError }) => {
   const [events, setEvents] = useState<BirthdayEvent[]>([]);
   const [daySummaries, setDaySummaries] = useState<BirthdayDaySummary[]>([]);
-  const [startDate, setStartDate] = useState(monthAgoISO());
+  const [startDate, setStartDate] = useState(startOfMonthISO());
   const [endDate, setEndDate] = useState(todayISO());
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
@@ -219,12 +219,13 @@ const BirthdayListView: React.FC<BirthdayListViewProps> = ({ token, onBack, onAu
           </div>
         )}
 
-        {/* Pending tickets per day — only days that still owe redemptions */}
-        {daySummaries.some((s) => s.pending > 0) && (
+        {/* Pending tickets per day. Reconciled days are excluded: their gap was
+            already billed via the venta global, so nothing is redeemable there. */}
+        {daySummaries.some((s) => s.pending > 0 && !s.reconciled) && (
           <div>
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Tickets por canjear</h3>
             <div className="space-y-1.5">
-              {daySummaries.filter((s) => s.pending > 0).map((s) => (
+              {daySummaries.filter((s) => s.pending > 0 && !s.reconciled).map((s) => (
                 <div key={s.date} className="flex justify-between items-center bg-white rounded-lg px-3 py-2 text-sm border border-gray-100 gap-2 shadow-sm">
                   <div className="min-w-0">
                     <div className="text-[11px] text-gray-400">{formatEventDate(s.date)}</div>
@@ -233,7 +234,7 @@ const BirthdayListView: React.FC<BirthdayListViewProps> = ({ token, onBack, onAu
                     </div>
                   </div>
                   <span className="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
-                    {s.reconciled ? 'Faltaron' : 'Faltan'} {s.pending}
+                    Faltan {s.pending}
                   </span>
                 </div>
               ))}

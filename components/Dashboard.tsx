@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { fetchSales, requestCancelSale, changePaymentMethod, splitSale, fetchBirthdayEvents, AuthError } from '../services/api';
 import { Sale, User, BirthdayDaySummary } from '../types';
 import SalesTable from './SalesTable';
-import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw, Banknote, CreditCard, Package, PlayCircle, Ticket, Calculator, Split, Cake } from 'lucide-react';
+import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw, Banknote, CreditCard, Package, PlayCircle, Ticket, Calculator, Split, Cake, List } from 'lucide-react';
 import WorkDayModal from './WorkDayModal';
 import SplitPaymentModal from './SplitPaymentModal';
 import BirthdayEventsModal from './BirthdayEventsModal';
@@ -275,10 +275,11 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
   const birthdayStats = useMemo(() => {
     const registered = birthdaySummary.reduce((s, d) => s + d.registered, 0);
     const redeemed = birthdaySummary.reduce((s, d) => s + d.redeemed, 0);
-    const pending = birthdaySummary.reduce((s, d) => s + d.pending, 0);
-    // Past tense once every day in range is reconciled (the gap was already billed).
-    const settled = birthdaySummary.length > 0 && birthdaySummary.every((d) => d.reconciled);
-    return { registered, redeemed, pending, settled };
+    // Reconciled days don't count as pending: their gap was already billed
+    // via the venta global, so there is nothing left to redeem.
+    const pending = birthdaySummary.filter((d) => !d.reconciled).reduce((s, d) => s + d.pending, 0);
+    const allRedeemed = birthdaySummary.every((d) => d.pending === 0);
+    return { registered, redeemed, pending, allRedeemed };
   }, [birthdaySummary]);
 
   if (showBirthdayList) {
@@ -371,6 +372,14 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
               >
                 <Cake className="w-5 h-5" />
                 <span>Cumpleaños</span>
+              </button>
+              <button
+                onClick={() => setShowBirthdayList(true)}
+                className="md:w-12 flex items-center justify-center bg-pink-50 hover:bg-pink-100 text-pink-600 p-2.5 rounded-lg border border-pink-200 transition-all active:transform active:scale-95"
+                title="Ver cumpleaños registrados"
+                aria-label="Ver cumpleaños registrados"
+              >
+                <List className="w-5 h-5" />
               </button>
               {/* Oculto por ahora — descomentar para reactivar "Liquidar Día"
               <button
@@ -491,9 +500,9 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
               <div>
                 <p className="text-xs text-gray-500 font-medium uppercase">Cumpleaños por canjear</p>
                 {birthdayStats.pending > 0 ? (
-                  <p className="text-lg font-bold text-pink-600">{birthdayStats.settled ? 'Faltaron' : 'Faltan'} {birthdayStats.pending}</p>
+                  <p className="text-lg font-bold text-pink-600">Faltan {birthdayStats.pending}</p>
                 ) : (
-                  <p className="text-lg font-bold text-emerald-600">Todos canjeados</p>
+                  <p className="text-lg font-bold text-emerald-600">{birthdayStats.allRedeemed ? 'Todos canjeados' : 'Al día'}</p>
                 )}
                 <p className="text-[11px] text-gray-400">{birthdayStats.redeemed}/{birthdayStats.registered} canjeados</p>
               </div>
