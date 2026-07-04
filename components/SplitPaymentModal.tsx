@@ -20,7 +20,6 @@ const PAYMENT_METHODS = [
 const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({ isOpen, onClose, sale, onConfirm }) => {
   const [splitAmount, setSplitAmount] = useState<number>(sale.amount / 2);
   const [method, setMethod] = useState<number>(1); // Default to Transfer
-  const [vendorName, setVendorName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -32,15 +31,10 @@ const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({ isOpen, onClose, 
       return;
     }
 
-    if (method === 2 && !vendorName.trim()) {
-      setError('El número de factura de taquilla es obligatorio para "Paquete"');
-      return;
-    }
-
     setIsSubmitting(true);
     setError('');
     try {
-      await onConfirm(sale.id, splitAmount, method, vendorName.trim());
+      await onConfirm(sale.id, splitAmount, method);
       onClose();
     } catch (err) {
       setError((err as Error).message || 'Error al dividir el pago');
@@ -120,20 +114,6 @@ const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({ isOpen, onClose, 
                 })}
               </div>
             </div>
-
-            {/* Box-office invoice number (only if package) */}
-            {method === 2 && (
-              <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-200">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Número de factura de taquilla</label>
-                <input
-                  type="text"
-                  value={vendorName}
-                  onChange={(e) => setVendorName(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
-                  placeholder="Ej. 001234"
-                />
-              </div>
-            )}
 
             {error && (
               <div className="flex items-center gap-2 p-3 bg-red-50 text-red-600 rounded-xl text-xs font-medium border border-red-100 italic">
