@@ -295,7 +295,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Navigation Bar - Bootstrap style primary color */}
-      <nav className="bg-primary text-white shadow-lg sticky top-0 z-30">
+      <nav className="bg-primary text-white shadow-lg sticky top-0 z-30 pt-safe">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div className="bg-white/20 p-2 rounded-lg">

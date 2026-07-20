@@ -150,7 +150,7 @@ const BirthdayListView: React.FC<BirthdayListViewProps> = ({ token, onBack, onAu
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Page header with back arrow */}
-      <header className="bg-primary text-white sticky top-0 z-30 shadow-md">
+      <header className="bg-primary text-white sticky top-0 z-30 shadow-md pt-safe">
         <div className="container mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={onBack}

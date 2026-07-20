@@ -1,0 +1,9 @@
+/* Safe areas iOS (notch / barra de estado) — solo aplican en modo standalone,
+   en navegador env() vale 0 y no cambia nada. */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+body {
+  padding-bottom: env(safe-area-inset-bottom);
+}
