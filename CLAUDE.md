@@ -39,7 +39,13 @@ Non-admin users have date inputs restricted to yesterday + today (`components/Da
 
 ## Styling — important
 
-Tailwind is loaded via **CDN script in `index.html`** (not npm/PostCSS), with theme colors defined inline there (`primary: '#0d6efd'`, etc.). There is no `tailwind.config.js`. `index.html` also contains an importmap pointing React/recharts/lucide to a CDN — npm packages in `package.json` are what Vite actually bundles; keep versions in sync if touching either.
+Tailwind v3 is compiled **at build time** via npm + PostCSS: `tailwind.config.js` (theme colors — `primary: '#0d6efd'`, etc.) and `postcss.config.js`. The `@tailwind` directives live in `index.css` at the project root, imported from `index.tsx` so Vite/PostCSS processes it and emits a hashed CSS asset.
+
+Do **not** put `@tailwind` directives in `public/` — files there are copied verbatim and never reach PostCSS.
+
+Because classes are scanned from source at build time, a class name assembled dynamically at runtime (e.g. `` `bg-${color}-500` ``) will be purged. Write complete literal class strings; conditional whole-class ternaries inside template literals are fine and are what the codebase uses.
+
+Previously Tailwind came from `cdn.tailwindcss.com` as a blocking `<script>` in `<head>`, and an importmap pointed React/recharts/lucide at a CDN. Both were removed: the blocking script meant any CDN outage left a blank page, and the importmap was dead weight since Vite bundles those deps from `package.json`. The app now has **no external runtime dependencies** — keep it that way.
 
 ## Environment
 

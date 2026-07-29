@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Safe areas iOS (notch / barra de estado) — solo aplican en modo standalone,
    en navegador env() vale 0 y no cambia nada. */
 .pt-safe {
