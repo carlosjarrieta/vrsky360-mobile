@@ -31,7 +31,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
         setLoading(true);
         setLoadError(null);
         try {
-            const data = await fetchSales(token, startDate, endDate);
+            const { sales: data } = await fetchSales(token, startDate, endDate);
             setSales(data);
         } catch (error) {
             if (error instanceof AuthError) {

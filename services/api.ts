@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { AuthResponse, BirthdayEvent, BirthdayEventInput, BirthdayEventsApiResponse, BirthdayEventsResult, Sale, SalesApiResponse } from '../types';
+import { AuthResponse, BirthdayEvent, BirthdayEventInput, BirthdayEventsApiResponse, BirthdayEventsResult, Sale, SalesApiResponse, SalesFetchResult } from '../types';
 
 const apiBase = ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:3001/api/v1').replace(/\/+$/, '');
 export const API_BASE_URL = apiBase;
@@ -67,7 +67,9 @@ export const loginUser = async (email: string, password: string): Promise<AuthRe
   return normalizeAuthPayload(payload);
 };
 
-export const fetchSales = async (token: string, startDate: string, endDate: string): Promise<Sale[]> => {
+// Devuelve las ventas y, para operadores (no admin), los datos de su máquina:
+// el backend los manda en `meta.machine` y de ahí sale el precio de paquete.
+export const fetchSales = async (token: string, startDate: string, endDate: string): Promise<SalesFetchResult> => {
   const url = new URL(SALES_URL);
   url.searchParams.append('start_date', startDate);
   url.searchParams.append('end_date', endDate);
@@ -94,7 +96,10 @@ export const fetchSales = async (token: string, startDate: string, endDate: stri
   }
 
   const jsonResponse: SalesApiResponse = await response.json();
-  return jsonResponse.data || []; // Handle { data: [...] } structure
+  return {
+    sales: jsonResponse.data || [], // Handle { data: [...] } structure
+    machine: jsonResponse.meta?.machine,
+  };
 };
 
 export const requestCancelSale = async (
