@@ -48,8 +48,27 @@ export interface Sale {
   vendor_name?: string;
 }
 
+// Datos de la máquina del operador que vienen en el meta del listado de ventas.
+// package_amount es el valor con el que queda registrada una jugada de paquete:
+// lo define el precio configurado en la máquina, no el monto que teclea el
+// operador al dividir una venta.
+export interface MachineMeta {
+  id: number;
+  name: string;
+  token: string;
+  package_amount?: number;
+}
+
 export interface SalesApiResponse {
   data: Sale[];
+  meta?: {
+    machine?: MachineMeta;
+  };
+}
+
+export interface SalesFetchResult {
+  sales: Sale[];
+  machine?: MachineMeta;
 }
 
 // A single birthday event the operator registers (one row in the form).

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { fetchSales, requestCancelSale, changePaymentMethod, splitSale, fetchBirthdayEvents, AuthError } from '../services/api';
-import { Sale, User, BirthdayDaySummary } from '../types';
+import { Sale, User, BirthdayDaySummary, MachineMeta } from '../types';
 import SalesTable from './SalesTable';
 import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw, Banknote, CreditCard, Package, PlayCircle, Ticket, Calculator, Split, Cake, List } from 'lucide-react';
 import WorkDayModal from './WorkDayModal';
@@ -40,6 +40,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
   const [showBirthdayList, setShowBirthdayList] = useState(false);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [selectedSaleForSplit, setSelectedSaleForSplit] = useState<Sale | null>(null);
+  const [machineInfo, setMachineInfo] = useState<MachineMeta | null>(null);
   const [pendingCancellationIds, setPendingCancellationIds] = useState<number[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const pendingIdsRef = useRef<Set<number>>(new Set(pendingCancellationIds));
@@ -52,7 +53,8 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
     setLoading(true);
     setLoadError(null);
     try {
-      const data = await fetchSales(token, startDate, endDate);
+      const { sales: data, machine } = await fetchSales(token, startDate, endDate);
+      setMachineInfo(machine ?? null);
       const pendingIds = new Set(pendingIdsRef.current);
 
       // Update pending IDs based on server response - trust the backend
@@ -544,6 +546,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
         <SplitPaymentModal
           isOpen={isSplitModalOpen}
           sale={selectedSaleForSplit}
+          packageAmount={machineInfo?.package_amount}
           onClose={() => {
             setIsSplitModalOpen(false);
             setSelectedSaleForSplit(null);

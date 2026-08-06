@@ -6,24 +6,35 @@ interface SplitPaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   sale: Sale;
+  // Valor con el que el backend registra una jugada de paquete (el precio
+  // configurado en la máquina). Al dividir hacia Paquete el monto tecleado solo
+  // decide cuánto sale de la venta original; la nueva queda con este precio.
+  packageAmount?: number;
   onConfirm: (saleId: number, amount: number, method: number, vendorName?: string) => Promise<void>;
 }
+
+const PACKAGE_METHOD = 2;
 
 const PAYMENT_METHODS = [
   { label: 'Efectivo', value: 0, icon: Banknote },
   { label: 'Transferencia', value: 1, icon: CreditCard },
-  { label: 'Paquete', value: 2, icon: Package },
+  { label: 'Paquete', value: PACKAGE_METHOD, icon: Package },
   { label: 'Demo', value: 3, icon: PlayCircle },
   { label: 'Taquilla', value: 4, icon: Ticket },
 ];
 
-const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({ isOpen, onClose, sale, onConfirm }) => {
+const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({ isOpen, onClose, sale, packageAmount, onConfirm }) => {
   const [splitAmount, setSplitAmount] = useState<number>(sale.amount / 2);
   const [method, setMethod] = useState<number>(1); // Default to Transfer
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   if (!isOpen) return null;
+
+  // El paquete no se registra con el monto tecleado sino con el precio de la
+  // máquina; si el backend no lo informó, se muestra el monto tecleado.
+  const isPackage = method === PACKAGE_METHOD;
+  const newSaleAmount = isPackage && packageAmount ? packageAmount : splitAmount;
 
   const handleConfirm = async () => {
     if (splitAmount <= 0 || splitAmount >= sale.amount) {
@@ -66,7 +77,7 @@ const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({ isOpen, onClose, 
           <div className="space-y-4">
             {/* Split Amount */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Monto para el Otro Medio</label>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Monto que sale de esta venta</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-gray-400">$</span>
                 <input
@@ -79,16 +90,25 @@ const SplitPaymentModal: React.FC<SplitPaymentModalProps> = ({ isOpen, onClose, 
             </div>
 
             {/* Split Preview */}
-            <div className="flex items-center justify-between gap-4 p-3 bg-blue-50/50 rounded-xl border border-blue-100">
-              <div className="text-center flex-1">
-                <p className="text-[10px] text-blue-600 font-bold uppercase">Original quedará</p>
-                <p className="text-sm font-bold text-gray-700">${(sale.amount - splitAmount).toLocaleString()}</p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-4 p-3 bg-blue-50/50 rounded-xl border border-blue-100">
+                <div className="text-center flex-1">
+                  <p className="text-[10px] text-blue-600 font-bold uppercase">Original quedará</p>
+                  <p className="text-sm font-bold text-gray-700">${(sale.amount - splitAmount).toLocaleString()}</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-blue-300" />
+                <div className="text-center flex-1">
+                  <p className="text-[10px] text-emerald-600 font-bold uppercase">Nuevo será</p>
+                  <p className="text-sm font-bold text-gray-700">${newSaleAmount.toLocaleString()}</p>
+                </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-blue-300" />
-              <div className="text-center flex-1">
-                <p className="text-[10px] text-emerald-600 font-bold uppercase">Nuevo será</p>
-                <p className="text-sm font-bold text-gray-700">${splitAmount.toLocaleString()}</p>
-              </div>
+              {isPackage && (
+                <p className="text-[11px] text-gray-500 italic px-1">
+                  {packageAmount
+                    ? `El paquete se registra con el precio de la máquina (${packageAmount.toLocaleString()}), no con el monto que escribas.`
+                    : 'El paquete se registra con el precio configurado en la máquina, no con el monto que escribas.'}
+                </p>
+              )}
             </div>
 
             {/* Method Select */}
