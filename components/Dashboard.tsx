@@ -30,8 +30,13 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
   const minDate = user.admin ? undefined : yesterday;
   const maxDate = user.admin ? undefined : today;
 
+  // Rango aplicado (el que consulta la API) vs. rango que se está tecleando en
+  // los inputs: elegir una fecha no debe disparar la consulta con un rango a
+  // medio armar (p. ej. inicio > fin). Solo el botón de refrescar lo aplica.
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
+  const [draftStartDate, setDraftStartDate] = useState(today);
+  const [draftEndDate, setDraftEndDate] = useState(today);
   const [sales, setSales] = useState<Sale[]>([]);
   const [birthdaySummary, setBirthdaySummary] = useState<BirthdayDaySummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -44,6 +49,9 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
   const [pendingCancellationIds, setPendingCancellationIds] = useState<number[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const pendingIdsRef = useRef<Set<number>>(new Set(pendingCancellationIds));
+
+  const isRangeInverted = draftStartDate > draftEndDate;
+  const hasPendingRange = draftStartDate !== startDate || draftEndDate !== endDate;
 
   useEffect(() => {
     pendingIdsRef.current = new Set(pendingCancellationIds);
@@ -104,6 +112,18 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
       setLoading(false);
     }
   }, [token, startDate, endDate]);
+
+  // Aplica el rango tecleado; si no cambió, recarga el mismo rango para que el
+  // botón siga sirviendo como "refrescar".
+  const applyDateRange = useCallback(() => {
+    if (draftStartDate > draftEndDate) return;
+    if (draftStartDate === startDate && draftEndDate === endDate) {
+      loadData();
+      return;
+    }
+    setStartDate(draftStartDate);
+    setEndDate(draftEndDate);
+  }, [draftStartDate, draftEndDate, startDate, endDate, loadData]);
 
   const handleSaleCancel = useCallback(async (saleId: number, reason: string) => {
     // Step 1: Optimistic update - immediately set to pending
@@ -344,8 +364,8 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  value={draftStartDate}
+                  onChange={(e) => setDraftStartDate(e.target.value)}
                   min={minDate}
                   max={maxDate}
                   className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
@@ -358,8 +378,8 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  value={draftEndDate}
+                  onChange={(e) => setDraftEndDate(e.target.value)}
                   min={minDate}
                   max={maxDate}
                   className="w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
@@ -393,15 +413,27 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
               </button>
               */}
               <button
-                onClick={loadData}
-                disabled={loading}
-                className="md:w-12 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-600 p-2.5 rounded-lg border border-gray-200 transition-all disabled:opacity-70 active:transform active:scale-95"
-                title="Refresh"
+                onClick={applyDateRange}
+                disabled={loading || isRangeInverted}
+                className={`md:w-12 flex items-center justify-center p-2.5 rounded-lg border transition-all disabled:opacity-70 disabled:cursor-not-allowed active:transform active:scale-95 ${hasPendingRange && !isRangeInverted
+                  ? 'bg-primary hover:bg-blue-700 text-white border-primary'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-600 border-gray-200'
+                  }`}
+                title={hasPendingRange ? 'Aplicar rango de fechas' : 'Refresh'}
               >
                 <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
               </button>
             </div>
           </div>
+          {isRangeInverted ? (
+            <p className="mt-2 text-xs font-medium text-red-600">
+              La fecha de inicio no puede ser posterior a la fecha fin.
+            </p>
+          ) : hasPendingRange ? (
+            <p className="mt-2 text-xs font-medium text-gray-500">
+              Pulsa el botón de refrescar para aplicar el rango {draftStartDate} → {draftEndDate}.
+            </p>
+          ) : null}
         </div>
 
         {/* Stats Cards */}
