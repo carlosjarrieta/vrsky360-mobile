@@ -122,7 +122,8 @@ export const requestCancelSale = async (
     }
 
     if (!response.ok) {
-      throw new Error('No se pudo cancelar la venta');
+      const errorData = await response.json().catch(() => ({} as { error?: string }));
+      throw new Error(errorData.error || 'No se pudo cancelar la venta');
     }
 
     const payload = await response.json();
@@ -171,7 +172,10 @@ export const changePaymentMethod = async (
     }
 
     if (!response.ok) {
-      throw new Error('No se pudo cambiar el método de pago');
+      // El backend responde { success: false, error: '...' }; en particular un 409
+      // cuando el día de la venta ya quedó facturado en un corte de liquidación.
+      const errorData = await response.json().catch(() => ({} as { error?: string }));
+      throw new Error(errorData.error || 'No se pudo cambiar el método de pago');
     }
 
     const payload = await response.json();

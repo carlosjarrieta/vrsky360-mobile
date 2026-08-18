@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { fetchSales, AuthError } from '../services/api';
+import { fetchSales, requestCancelSale, changePaymentMethod, splitSale, AuthError } from '../services/api';
 import { Sale, User, Machine } from '../types';
 import SalesTable from './SalesTable';
+import SplitPaymentModal from './SplitPaymentModal';
 import { Calendar, DollarSign, Users, Gamepad2, LogOut, RefreshCw, Banknote, CreditCard, Package, PlayCircle, Ticket, Building2, Filter } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -19,13 +20,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
         return `${year}-${month}-${day}`;
     })();
 
+    // Rango aplicado (el que consulta la API) vs. rango que se está tecleando en
+    // los inputs. Se separan para que elegir una fecha no dispare la consulta con
+    // un rango a medio armar (p. ej. inicio > fin): solo "Actualizar" lo aplica.
     const [startDate, setStartDate] = useState(today);
     const [endDate, setEndDate] = useState(today);
+    const [draftStartDate, setDraftStartDate] = useState(today);
+    const [draftEndDate, setDraftEndDate] = useState(today);
     const [sales, setSales] = useState<Sale[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedMachine, setSelectedMachine] = useState<number | null>(null);
     const [showMachineDetail, setShowMachineDetail] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
+    const [actionError, setActionError] = useState<string | null>(null);
+    const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
+    const [selectedSaleForSplit, setSelectedSaleForSplit] = useState<Sale | null>(null);
+
+    const isRangeInverted = draftStartDate > draftEndDate;
+    const hasPendingRange = draftStartDate !== startDate || draftEndDate !== endDate;
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -57,6 +69,81 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
 
         return () => clearInterval(interval);
     }, [loadData]);
+
+    // Aplica el rango tecleado. Si no cambió, recarga con el mismo rango para
+    // que el botón siga funcionando como "refrescar".
+    const applyDateRange = useCallback(() => {
+        if (draftStartDate > draftEndDate) return;
+        if (draftStartDate === startDate && draftEndDate === endDate) {
+            loadData();
+            return;
+        }
+        setStartDate(draftStartDate);
+        setEndDate(draftEndDate);
+    }, [draftStartDate, draftEndDate, startDate, endDate, loadData]);
+
+    // El superadmin es el único que ve todo el histórico, así que también es el
+    // único que puede corregir ventas viejas: los vendedores solo alcanzan ayer
+    // y hoy, y las ventas en efectivo mal marcadas quedan fuera de su alcance.
+    const handleChangePaymentMethod = useCallback(async (saleId: number, method: number, vendorName?: string) => {
+        setActionError(null);
+        try {
+            const result = await changePaymentMethod(token, saleId, method, vendorName);
+            if (result.success) {
+                setSales((prev) =>
+                    prev.map((sale) =>
+                        sale.id === saleId
+                            ? { ...sale, ...(result.sale || {}), payment_method: method }
+                            : sale
+                    )
+                );
+                loadData();
+            }
+        } catch (error) {
+            if (error instanceof AuthError) {
+                onLogout();
+                return;
+            }
+            console.error('Failed to change payment method:', error);
+            setActionError((error as Error).message || 'No se pudo cambiar el método de pago.');
+        }
+    }, [token, onLogout, loadData]);
+
+    const handleSaleCancel = useCallback(async (saleId: number, reason: string) => {
+        setActionError(null);
+        try {
+            await requestCancelSale(token, saleId, reason);
+            setSales((prev) =>
+                prev.map((sale) =>
+                    sale.id === saleId
+                        ? { ...sale, pending: true, pendingCancellation: true, cancellation_status: 'pending' as const, cancellation_reason: reason }
+                        : sale
+                )
+            );
+            loadData();
+        } catch (error) {
+            if (error instanceof AuthError) {
+                onLogout();
+                return;
+            }
+            console.error('Failed to cancel sale:', error);
+            throw error; // el modal de SalesTable muestra el mensaje
+        }
+    }, [token, onLogout, loadData]);
+
+    const handleSplitSale = useCallback(async (saleId: number, amount: number, method: number, vendorName?: string) => {
+        try {
+            const result = await splitSale(token, saleId, amount, method, vendorName);
+            if (result.success) loadData();
+        } catch (error) {
+            if (error instanceof AuthError) {
+                onLogout();
+                return;
+            }
+            console.error('Failed to split sale:', error);
+            throw error; // SplitPaymentModal muestra el mensaje
+        }
+    }, [token, onLogout, loadData]);
 
     // Filter sales by selected machine if applicable
     const filteredSales = useMemo(() => {
@@ -228,6 +315,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                     </div>
                 )}
 
+                {actionError && (
+                    <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-md flex items-center justify-between gap-3">
+                        <p className="text-sm text-amber-800 font-medium">{actionError}</p>
+                        <button
+                            onClick={() => setActionError(null)}
+                            className="text-sm font-semibold text-amber-800 underline whitespace-nowrap"
+                        >
+                            Cerrar
+                        </button>
+                    </div>
+                )}
+
                 {/* Filters Section */}
                 <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                     <div className="flex flex-col md:flex-row md:items-end gap-4">
@@ -237,8 +336,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input
                                     type="date"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
+                                    value={draftStartDate}
+                                    onChange={(e) => setDraftStartDate(e.target.value)}
                                     className="w-full pl-10 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
                                 />
                             </div>
@@ -249,16 +348,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input
                                     type="date"
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
+                                    value={draftEndDate}
+                                    onChange={(e) => setDraftEndDate(e.target.value)}
                                     className="w-full pl-10 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
                                 />
                             </div>
                         </div>
                         <button
-                            onClick={loadData}
-                            disabled={loading}
-                            className="flex items-center justify-center gap-2 bg-primary hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-all disabled:opacity-70 shadow-sm active:transform active:scale-95"
+                            onClick={applyDateRange}
+                            disabled={loading || isRangeInverted}
+                            className="flex items-center justify-center gap-2 bg-primary hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-sm active:transform active:scale-95"
                         >
                             {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Actualizar'}
                         </button>
@@ -272,6 +371,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                             </button>
                         )}
                     </div>
+                    {isRangeInverted ? (
+                        <p className="mt-2 text-xs font-medium text-red-600">
+                            La fecha de inicio no puede ser posterior a la fecha fin.
+                        </p>
+                    ) : hasPendingRange ? (
+                        <p className="mt-2 text-xs font-medium text-gray-500">
+                            Pulsa <span className="font-semibold text-primary">Actualizar</span> para aplicar el rango {draftStartDate} → {draftEndDate}.
+                        </p>
+                    ) : null}
                 </div>
 
                 {/* Conditional Rendering: Overview or Machine Detail */}
@@ -565,13 +673,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
                         {/* Sales Table for selected machine */}
                         <SalesTable
                             sales={filteredSales}
-                            onCancelSale={async () => { }}
-                            onChangePaymentMethod={async () => { }}
+                            onCancelSale={handleSaleCancel}
+                            onChangePaymentMethod={handleChangePaymentMethod}
+                            onSplitSale={(sale) => {
+                                setSelectedSaleForSplit(sale);
+                                setIsSplitModalOpen(true);
+                            }}
                         />
                     </>
                 )}
 
             </main>
+
+            {selectedSaleForSplit && (
+                <SplitPaymentModal
+                    isOpen={isSplitModalOpen}
+                    sale={selectedSaleForSplit}
+                    onClose={() => {
+                        setIsSplitModalOpen(false);
+                        setSelectedSaleForSplit(null);
+                    }}
+                    onConfirm={handleSplitSale}
+                />
+            )}
         </div>
     );
 };
