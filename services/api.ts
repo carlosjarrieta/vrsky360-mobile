@@ -69,7 +69,7 @@ export const loginUser = async (email: string, password: string): Promise<AuthRe
 
 // Devuelve las ventas y, para operadores (no admin), los datos de su máquina:
 // el backend los manda en `meta.machine` y de ahí sale el precio de paquete.
-export const fetchSales = async (token: string, startDate: string, endDate: string): Promise<SalesFetchResult> => {
+export const fetchSales = async (token: string, startDate: string, endDate: string, signal?: AbortSignal): Promise<SalesFetchResult> => {
   const url = new URL(SALES_URL);
   url.searchParams.append('start_date', startDate);
   url.searchParams.append('end_date', endDate);
@@ -80,7 +80,8 @@ export const fetchSales = async (token: string, startDate: string, endDate: stri
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
-      }
+      },
+      signal,
     });
   } catch {
     throw new Error(CONNECTION_ERROR_MESSAGE);
