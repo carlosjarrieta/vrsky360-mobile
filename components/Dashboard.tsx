@@ -57,11 +57,23 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
     pendingIdsRef.current = new Set(pendingCancellationIds);
   }, [pendingCancellationIds]);
 
+  // Solo la consulta más reciente puede escribir en pantalla (ver AdminDashboard):
+  // una respuesta vieja que llega tarde no debe pisar los datos del rango actual.
+  const requestSeq = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+  const inFlightRef = useRef(false);
+
   const loadData = React.useCallback(async () => {
+    const seq = ++requestSeq.current;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    inFlightRef.current = true;
     setLoading(true);
     setLoadError(null);
     try {
-      const { sales: data, machine } = await fetchSales(token, startDate, endDate);
+      const { sales: data, machine } = await fetchSales(token, startDate, endDate, controller.signal);
+      if (seq !== requestSeq.current) return;
       setMachineInfo(machine ?? null);
       const pendingIds = new Set(pendingIdsRef.current);
 
@@ -95,12 +107,14 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
       // Birthday reconciliation summary for the selected range (non-fatal).
       try {
         const { summary } = await fetchBirthdayEvents(token, startDate, endDate);
+        if (seq !== requestSeq.current) return;
         setBirthdaySummary(summary);
       } catch (bErr) {
         if (bErr instanceof AuthError) throw bErr;
         console.error('Failed to fetch birthday summary', bErr);
       }
     } catch (error) {
+      if (seq !== requestSeq.current) return; // consulta reemplazada por otra más nueva
       // If token is invalid or expired, redirect to login via onLogout
       if (error instanceof AuthError) {
         onLogout();
@@ -109,9 +123,14 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
       console.error("Failed to fetch sales", error);
       setLoadError(error instanceof Error && error.message ? error.message : 'No se pudieron cargar las ventas.');
     } finally {
-      setLoading(false);
+      if (seq === requestSeq.current) {
+        inFlightRef.current = false;
+        setLoading(false);
+      }
     }
   }, [token, startDate, endDate]);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   // Aplica el rango tecleado; si no cambió, recarga el mismo rango para que el
   // botón siga sirviendo como "refrescar".
@@ -121,6 +140,9 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
       loadData();
       return;
     }
+    // Al cambiar de rango no deben quedar a la vista los datos del anterior.
+    setSales([]);
+    setBirthdaySummary([]);
     setStartDate(draftStartDate);
     setEndDate(draftEndDate);
   }, [draftStartDate, draftEndDate, startDate, endDate, loadData]);
@@ -257,7 +279,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, user, onLogout }) => {
   // Auto-refresh every 1 minute
   useEffect(() => {
     const interval = setInterval(() => {
-      loadData();
+      if (!inFlightRef.current) loadData();
     }, 60000); // 60 seconds
 
     return () => clearInterval(interval);

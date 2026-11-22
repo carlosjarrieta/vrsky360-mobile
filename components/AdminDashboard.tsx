@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { fetchSales, requestCancelSale, changePaymentMethod, splitSale, AuthError } from '../services/api';
 import { Sale, User, Machine } from '../types';
 import SalesTable from './SalesTable';
@@ -39,13 +39,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
     const isRangeInverted = draftStartDate > draftEndDate;
     const hasPendingRange = draftStartDate !== startDate || draftEndDate !== endDate;
 
+    // Cada consulta lleva un número de secuencia: solo la más reciente puede
+    // escribir en pantalla. Con rangos largos la respuesta tarda, y sin esto una
+    // respuesta vieja (de otro rango, o de antes de un cambio de método de pago)
+    // podía llegar al final y dejar totales que no corresponden a las fechas
+    // mostradas.
+    const requestSeq = useRef(0);
+    const abortRef = useRef<AbortController | null>(null);
+    const inFlightRef = useRef(false);
+
     const loadData = useCallback(async () => {
+        const seq = ++requestSeq.current;
+        abortRef.current?.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
+        inFlightRef.current = true;
         setLoading(true);
         setLoadError(null);
         try {
-            const { sales: data } = await fetchSales(token, startDate, endDate);
+            const { sales: data } = await fetchSales(token, startDate, endDate, controller.signal);
+            if (seq !== requestSeq.current) return;
             setSales(data);
         } catch (error) {
+            if (seq !== requestSeq.current) return; // consulta reemplazada por otra más nueva
             if (error instanceof AuthError) {
                 onLogout();
                 return;
@@ -53,9 +69,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
             console.error("Failed to fetch sales", error);
             setLoadError(error instanceof Error && error.message ? error.message : 'No se pudieron cargar las ventas.');
         } finally {
-            setLoading(false);
+            if (seq === requestSeq.current) {
+                inFlightRef.current = false;
+                setLoading(false);
+            }
         }
     }, [token, startDate, endDate, onLogout]);
+
+    useEffect(() => () => abortRef.current?.abort(), []);
 
     useEffect(() => {
         loadData();
@@ -64,7 +85,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
     // Auto-refresh every 1 minute
     useEffect(() => {
         const interval = setInterval(() => {
-            loadData();
+            // No pisar una consulta en curso: en un rango largo y con red lenta
+            // puede tardar más de un minuto y el refresco la cancelaría siempre.
+            if (!inFlightRef.current) loadData();
         }, 60000); // 60 seconds
 
         return () => clearInterval(interval);
@@ -78,6 +101,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ token, user, onLogout }
             loadData();
             return;
         }
+        // Al cambiar de rango se vacían las ventas: mientras carga (o si la carga
+        // falla) no deben quedar a la vista los totales del rango anterior.
+        setSales([]);
         setStartDate(draftStartDate);
         setEndDate(draftEndDate);
     }, [draftStartDate, draftEndDate, startDate, endDate, loadData]);
